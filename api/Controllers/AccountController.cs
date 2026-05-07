@@ -14,10 +14,12 @@ using Microsoft.EntityFrameworkCore;
 [Route("api/account")]
 public class AccountController : ControllerBase
 {
-     private readonly AppDbContext _appDbContext;
+    private readonly ILogger<AuthController> _logger;
+    private readonly AppDbContext _appDbContext;
 
-    public AccountController(AppDbContext appDbContext)
+    public AccountController(ILogger<AuthController> logger, AppDbContext appDbContext)
     {
+        _logger = logger;
         _appDbContext = appDbContext;
     }
 
@@ -25,16 +27,19 @@ public class AccountController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<GetAccountsResponseDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Get()
     {
+       
         try{
             var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+            _logger.LogInformation("GET Accounts by User: {User}.",userId);
             var accounts = await _appDbContext.Accounts
                             .Where(a => a.UserId  == userId)
                             .ToListAsync();
             var accountsDto = accounts.Adapt<List<AccountResponseDto>>();
             return Ok(ApiResponse<GetAccountsResponseDto>.Ok(new GetAccountsResponseDto{Accounts = accountsDto}));
         }
-        catch(Exception)
+        catch(Exception ex)
         {
+            _logger.LogInformation(ex, "Internal Server Error on GET Accounts" );
             return StatusCode(500, ApiResponse<AccountResponseDto>.Fail("Internal Server Error"));
         }
     }
@@ -45,6 +50,7 @@ public class AccountController : ControllerBase
     {
         try{
             var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+            _logger.LogInformation("POST Account by User: {User}. Request: {@Request}", userId,postAccountRequestDto);
             var account = new Account{ Id = Guid.NewGuid(), Name = postAccountRequestDto.Name, Nature = postAccountRequestDto.Nature, UserId = userId };
 
             _appDbContext.Accounts.Add(account);
@@ -52,8 +58,9 @@ public class AccountController : ControllerBase
 
             return Ok(ApiResponse<AccountResponseDto>.Ok(new AccountResponseDto{Id = account.Id, Name= account.Name, Nature = account.Nature}));
         }
-        catch(Exception)
+        catch(Exception ex)
         {
+            _logger.LogInformation(ex, "Internal Server Error on POST Account. Request: {@Request}", postAccountRequestDto);
             return StatusCode(500, ApiResponse<AccountResponseDto>.Fail("Internal Server Error"));
         }
     }
@@ -64,15 +71,18 @@ public class AccountController : ControllerBase
         try
         {
             var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+            _logger.LogInformation("DELETE Account with Id: {Id} by User: {User}", Id, userId);
             var account = await _appDbContext.Accounts.Where(a => a.Id == Id).FirstOrDefaultAsync();
 
             if(account == null)
             {
+                _logger.LogInformation("Account with Id: {Id} not exists.", Id);
                return BadRequest(ApiResponse<AccountResponseDto>.Fail("Account not exists."));
             }
 
             if(account.UserId != userId)
             {
+                _logger.LogWarning("Unauthorized for delete this account.");
                 return Unauthorized(ApiResponse<AccountResponseDto>.Fail("Unauthorized."));
             }
 
@@ -81,8 +91,9 @@ public class AccountController : ControllerBase
 
             return NoContent();
         }
-        catch(Exception)
+        catch(Exception ex)
         {
+             _logger.LogInformation(ex, "Internal Server Error on DELETE Account. Request: {@Request}", Id);
             return StatusCode(500, ApiResponse<AccountResponseDto>.Fail("Internal Server Error"));
         }
     }
