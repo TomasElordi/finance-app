@@ -6,7 +6,6 @@ using api.DTOs;
 using api.Models;
 using Mapster;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -52,6 +51,35 @@ public class AccountController : ControllerBase
             await _appDbContext.SaveChangesAsync();
 
             return Ok(ApiResponse<AccountResponseDto>.Ok(new AccountResponseDto{Id = account.Id, Name= account.Name, Nature = account.Nature}));
+        }
+        catch(Exception)
+        {
+            return StatusCode(500, ApiResponse<AccountResponseDto>.Fail("Internal Server Error"));
+        }
+    }
+
+    [HttpDelete]
+    public async Task<IActionResult> Delete([FromQuery] Guid Id)
+    {
+        try
+        {
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+            var account = await _appDbContext.Accounts.Where(a => a.Id == Id).FirstOrDefaultAsync();
+
+            if(account == null)
+            {
+               return BadRequest(ApiResponse<AccountResponseDto>.Fail("Account not exists."));
+            }
+
+            if(account.UserId != userId)
+            {
+                return Unauthorized(ApiResponse<AccountResponseDto>.Fail("Unauthorized."));
+            }
+
+            _appDbContext.Accounts.Remove(account);
+            await _appDbContext.SaveChangesAsync();
+
+            return NoContent();
         }
         catch(Exception)
         {
