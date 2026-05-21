@@ -19,6 +19,7 @@ import {
   FieldLabel,
 } from "@/src/shared/components/ui/field";
 import { LoginActionState } from "@/src/features/auth/login/types/login-action-state";
+import Link from "next/link";
 
 const initialState: LoginActionState = { status: "idle" };
 
@@ -28,7 +29,6 @@ export default function LoginCard() {
     loginAction,
     initialState,
   );
-  console.log("state:", state);
   const emailError = state.status === "error" && !!state.errors.email;
   const passwordError = state.status === "error" && !!state.errors.password;
   return (
@@ -39,7 +39,9 @@ export default function LoginCard() {
           Enter your email below to login to your account
         </CardDescription>
         <CardAction>
-          <Button variant="link">Sign Up</Button>
+          <Button variant="link">
+            <Link href="/register"> Sign up</Link>
+          </Button>
         </CardAction>
       </CardHeader>
       <CardContent>
@@ -96,9 +98,9 @@ export default function LoginCard() {
             <Button type="submit" className="w-full" disabled={pending}>
               {pending ? "Cargando..." : "Login"}
             </Button>
-            <Button variant="outline" className="w-full">
+            {/* <Button variant="outline" className="w-full">
               Login with Google
-            </Button>
+            </Button> */}
           </div>
         </form>
       </CardContent>

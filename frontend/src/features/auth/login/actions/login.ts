@@ -1,13 +1,13 @@
 "use server";
 
 import { serverFetch } from "@/src/shared/lib/api";
-import { LoginResponse } from "../types/login-response";
 import { ApiResponse } from "@/src/shared/types/api";
 import { cookies } from "next/headers";
-import { LoginSchema } from "../types/login-schema";
+import { LoginSchema } from "@/src/features/auth/login/types/login-schema";
 import { redirect, RedirectType } from "next/navigation";
 import { PAGES } from "@/src/shared/lib/pages";
-import { LoginActionState } from "../types/login-action-state";
+import { LoginActionState } from "@/src/features/auth/login/types/login-action-state";
+import { AuthResponse } from "@/src/features/auth/shared/types/auth-response";
 
 export async function loginAction(
   _prevState: LoginActionState,
@@ -25,7 +25,7 @@ export async function loginAction(
     const { fieldErrors } = parsed.error.flatten();
     return {
       status: "error",
-      message: "Credenciales inválidas",
+      message: "Invalid credencials.",
       errors: {
         email: fieldErrors.email?.[0],
         password: fieldErrors.password?.[0],
@@ -33,7 +33,7 @@ export async function loginAction(
     };
   }
   try {
-    const response = await serverFetch<ApiResponse<LoginResponse>>(
+    const response = await serverFetch<ApiResponse<AuthResponse>>(
       "/auth/login",
       {
         method: "POST",
@@ -41,8 +41,6 @@ export async function loginAction(
         body: JSON.stringify(parsed.data),
       },
     );
-
-    console.log("response: ", response);
 
     if (!response.success) {
       return { status: "error", message: response.message, errors: {} };
@@ -56,6 +54,7 @@ export async function loginAction(
       sameSite: "strict",
       maxAge: 60 * 60 * 24,
     });
+    //TASK: Save USER!
   } catch (error) {
     console.log("error", error);
     return { status: "error", message: "Error de conexión", errors: {} };
