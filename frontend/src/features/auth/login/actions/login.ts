@@ -2,12 +2,12 @@
 
 import { serverFetch } from "@/src/shared/lib/api";
 import { ApiResponse } from "@/src/shared/types/api";
-import { cookies } from "next/headers";
 import { LoginSchema } from "@/src/features/auth/login/types/login-schema";
 import { redirect, RedirectType } from "next/navigation";
 import { PAGES } from "@/src/shared/lib/pages";
 import { LoginActionState } from "@/src/features/auth/login/types/login-action-state";
 import { AuthResponse } from "@/src/features/auth/shared/types/auth-response";
+import { session } from "@/src/shared/lib/session";
 
 export async function loginAction(
   _prevState: LoginActionState,
@@ -45,16 +45,8 @@ export async function loginAction(
     if (!response.success) {
       return { status: "error", message: response.message, errors: {} };
     }
-
-    // Guardás la cookie (esto corre en el servidor)
-    const cookieStore = await cookies();
-    cookieStore.set("token", response.data.accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 60 * 60 * 24,
-    });
-    //TASK: Save USER!
+    await session.setAccessToken(response.data.accessToken);
+    await session.setUserName(response.data.user.name);
   } catch (error) {
     console.log("error", error);
     return { status: "error", message: "Error de conexión", errors: {} };

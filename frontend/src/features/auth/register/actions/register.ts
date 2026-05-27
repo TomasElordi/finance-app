@@ -57,7 +57,7 @@ export async function registerAction(
 
     // Guardás la cookie (esto corre en el servidor)
     const cookieStore = await cookies();
-    cookieStore.set("token", response.data.accessToken, {
+    cookieStore.set("accessToken", response.data.accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
