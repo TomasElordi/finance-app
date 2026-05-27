@@ -14,10 +14,10 @@ using Microsoft.EntityFrameworkCore;
 [Route("api/account")]
 public class AccountController : ControllerBase
 {
-    private readonly ILogger<AuthController> _logger;
+    private readonly ILogger<AccountController> _logger;
     private readonly AppDbContext _appDbContext;
 
-    public AccountController(ILogger<AuthController> logger, AppDbContext appDbContext)
+    public AccountController(ILogger<AccountController> logger, AppDbContext appDbContext)
     {
         _logger = logger;
         _appDbContext = appDbContext;
