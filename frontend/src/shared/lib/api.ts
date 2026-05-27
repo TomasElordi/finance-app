@@ -1,5 +1,5 @@
-import { cookies } from "next/headers";
 import { apiBaseUrl } from "./envs";
+import { session } from "./session";
 
 export async function apiFetch<T>(path: string, options?: RequestInit) {
   const res = await fetch(`/api${path}`, {
@@ -16,7 +16,7 @@ export async function apiFetch<T>(path: string, options?: RequestInit) {
 }
 
 interface FetchOptions extends RequestInit {
-  auth?: boolean; // Si necesita token o no
+  auth?: boolean;
 }
 
 export async function serverFetch<T>(
@@ -30,20 +30,21 @@ export async function serverFetch<T>(
     ...(customHeaders as Record<string, string>),
   };
 
-  // Si la ruta necesita auth, sacás el token de la cookie
   if (auth) {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    const token = await session.getAccessToken();
 
     if (!token) throw new Error("No autorizado");
-
+    console.log("token:", token);
     headers["Authorization"] = `Bearer ${token}`;
   }
+  console.log("path: ", path);
 
   const res = await fetch(`${apiBaseUrl}${path}`, {
     ...rest,
     headers,
   });
 
-  return res.json() as Promise<T>;
+  const text = await res.text();
+  console.log("RESPUESTA:", text);
+  return (text ? JSON.parse(text) : null) as T;
 }
