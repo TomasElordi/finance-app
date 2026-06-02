@@ -94,10 +94,10 @@ public class EntryController : ControllerBase
             if (validAccounts.Count != accountIds.Count())
                 return BadRequest(ApiResponse<EntryResponseDto>.Fail("One or more accounts are invalid.")); 
             
- 
+            _logger.LogInformation("Date: {date}",postEntryRequestDto.Date.UtcDateTime);
             var entry = new Entry{ 
                                     Id = Guid.NewGuid(), 
-                                    Date = postEntryRequestDto.Date, 
+                                    Date = DateTime.SpecifyKind(postEntryRequestDto.Date.UtcDateTime, DateTimeKind.Utc),
                                     Title = postEntryRequestDto.Title, 
                                     UserId = userId, 
                                     Description = postEntryRequestDto.Description
@@ -207,7 +207,7 @@ public class EntryController : ControllerBase
             // 5. Actualizar campos escalares
             entry.Title = putEntryRequestDto.Title;
             entry.Description = putEntryRequestDto.Description;
-            entry.Date = putEntryRequestDto.Date;
+            entry.Date = DateTime.SpecifyKind(putEntryRequestDto.Date.UtcDateTime, DateTimeKind.Utc);
 
             // 6. Reemplazar líneas
             _appDbContext.EntryLines.RemoveRange(entry.EntryLines);
