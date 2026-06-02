@@ -34,10 +34,8 @@ export async function serverFetch<T>(
     const token = await session.getAccessToken();
 
     if (!token) throw new Error("No autorizado");
-    console.log("token:", token);
     headers["Authorization"] = `Bearer ${token}`;
   }
-  console.log("path: ", path);
 
   const res = await fetch(`${apiBaseUrl}${path}`, {
     ...rest,
@@ -45,6 +43,5 @@ export async function serverFetch<T>(
   });
 
   const text = await res.text();
-  console.log("RESPUESTA:", text);
   return (text ? JSON.parse(text) : null) as T;
 }

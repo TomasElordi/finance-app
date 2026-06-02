@@ -13,6 +13,7 @@ import {
   SidebarMenuItem,
 } from "./sidebar";
 import {
+  BookOpen,
   ChevronsUpDown,
   CircleDollarSign,
   LogOut,
@@ -61,6 +62,14 @@ export function AppSidebar({ userName }: { userName: string }) {
                 <Link href="/accounts">
                   <Wallet />
                   <span>Cuentas</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <Link href="/entries">
+                  <BookOpen />
+                  <span>Asientos</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

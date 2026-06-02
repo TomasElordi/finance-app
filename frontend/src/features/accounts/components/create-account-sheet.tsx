@@ -19,6 +19,13 @@ import {
   FieldLabel,
 } from "@/src/shared/components/ui/field";
 import { Separator } from "@/src/shared/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/src/shared/components/ui/select";
 
 const initialState: CreateAccountActionState = { status: "idle" };
 
@@ -74,20 +81,22 @@ export default function CreateAccountSheet() {
           </Field>
 
           <Field data-invalid={natureError}>
-            <FieldLabel htmlFor="nature">Tipo</FieldLabel>
-            <select
-              id="nature"
+            <FieldLabel>Tipo</FieldLabel>
+            <Select
               name="nature"
-              defaultValue={NatureType.Asset}
-              aria-invalid={natureError}
-              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              defaultValue={String(NatureType.Asset)}
             >
-              {NATURE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="w-full" aria-invalid={natureError}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {NATURE_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={String(opt.value)}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             {natureError && (
               <FieldDescription className="text-destructive">
                 {state.errors.nature}
