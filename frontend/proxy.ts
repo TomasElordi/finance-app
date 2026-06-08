@@ -9,7 +9,6 @@ import { session } from "./src/shared/lib/session";
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-
   const authenticated = await session.isAuthenticated();
   const isAuth = AUTH_PAGES.has(pathname as Page);
   if (isAuth && authenticated) {
@@ -17,11 +16,14 @@ export async function proxy(request: NextRequest) {
   }
 
   const isProtected = PROTECTED_PAGES.has(pathname as Page);
-
   if (isProtected) {
     if (!authenticated) {
       return NextResponse.redirect(new URL(PAGES.LOGIN, request.url));
     }
+  }
+
+  if (!isAuth && !isProtected) {
+    return NextResponse.redirect(new URL(PAGES.LOGIN, request.url));
   }
 
   return NextResponse.next();
