@@ -21,14 +21,13 @@ import {
 } from "@/src/shared/components/ui/field";
 import { Separator } from "@/src/shared/components/ui/separator";
 import EntryLinesFields from "./entry-lines-fields";
+import { useAccounts } from "../context/account-context";
 
 const initialState: CreateEntryActionState = { status: "idle" };
 
-interface CreateEntrySheetProps {
-  accounts: Account[];
-}
-
-export default function CreateEntrySheet({ accounts }: CreateEntrySheetProps) {
+export default function CreateEntrySheet() {
+  const accountContext = useAccounts();
+  const accounts = accountContext.accounts;
   const [open, setOpen] = useState(false);
   const [resetKey, setResetKey] = useState(0);
   const [timezoneOffset, setTimezoneOffset] = useState(0);

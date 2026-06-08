@@ -4,7 +4,6 @@ import { useActionState, useEffect, useState } from "react";
 import { updateEntryAction } from "@/src/features/entries/actions/update-entry";
 import { UpdateEntryActionState } from "@/src/features/entries/types/update-entry-action-state";
 import { Entry } from "@/src/features/entries/types/entry";
-import { Account } from "@/src/features/accounts/types/account";
 import {
   Sheet,
   SheetContent,
@@ -23,18 +22,17 @@ import {
 import { Separator } from "@/src/shared/components/ui/separator";
 import { Pencil } from "lucide-react";
 import EntryLinesFields from "./entry-lines-fields";
+import { useAccounts } from "../context/account-context";
 
 const initialState: UpdateEntryActionState = { status: "idle" };
 
 interface EditEntrySheetProps {
   entry: Entry;
-  accounts: Account[];
 }
 
-export default function EditEntrySheet({
-  entry,
-  accounts,
-}: EditEntrySheetProps) {
+export default function EditEntrySheet({ entry }: EditEntrySheetProps) {
+  const accountContext = useAccounts();
+  const accounts = accountContext.accounts;
   const [open, setOpen] = useState(false);
   const [resetKey, setResetKey] = useState(0);
   const [state, formAction, pending] = useActionState(
