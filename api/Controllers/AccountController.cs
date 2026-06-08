@@ -56,7 +56,7 @@ public class AccountController : ControllerBase
             _appDbContext.Accounts.Add(account);
             await _appDbContext.SaveChangesAsync();
 
-            return Ok(ApiResponse<AccountResponseDto>.Ok(new AccountResponseDto{Id = account.Id, Name= account.Name, Nature = account.Nature}));
+            return Ok(ApiResponse<AccountResponseDto>.Ok(new AccountResponseDto{Id = account.Id, Name= account.Name, Nature = account.Nature, Balance = account.Balance}));
         }
         catch(Exception ex)
         {

@@ -93,7 +93,7 @@ export default function LoginCard() {
                   <Button
                     variant="ghost"
                     onClick={(e) => {
-                      e.preventDefault();
+                      // e.preventDefault();
                       setShowPassword(!showPassword);
                     }}
                   >

@@ -24,6 +24,26 @@ public class EntryController : ControllerBase
         _appDbContext = appDbContext;
     }
 
+    private static readonly HashSet<NatureType> DebitNormalNatures = [NatureType.Asset, NatureType.Expense];
+
+    private async Task ApplyBalanceDeltasAsync(IEnumerable<EntryLine> lines, bool reverse = false)
+    {
+        var accountIds = lines.Select(l => l.AccountId).Distinct().ToList();
+        var accounts = await _appDbContext.Accounts
+            .Where(a => accountIds.Contains(a.Id))
+            .ToDictionaryAsync(a => a.Id);
+
+        foreach (var line in lines)
+        {
+            var account = accounts[line.AccountId];
+            bool isDebitNormal = DebitNormalNatures.Contains(account.Nature);
+            decimal delta = (isDebitNormal == (line.Type == EntryLineType.Debit))
+                ? line.Amount
+                : -line.Amount;
+            account.Balance += reverse ? -delta : delta;
+        }
+    }
+
     [HttpGet]
     [ProducesResponseType(typeof(ApiResponse<GetEntriesResponseDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Get()
@@ -132,6 +152,7 @@ public class EntryController : ControllerBase
                 _logger.LogInformation("This entry is out of balance. Check your debit and credit amounts.");
                 return BadRequest(ApiResponse<EntryResponseDto>.Fail("This entry is out of balance. Check your debit and credit amounts."));
             }
+            await ApplyBalanceDeltasAsync(entry.EntryLines);
             _appDbContext.Entries.Add(entry);
             await _appDbContext.SaveChangesAsync();
             var entryLinesDto = entry.EntryLines.Adapt<List<EntryLineResponseDto>>();
@@ -204,12 +225,16 @@ public class EntryController : ControllerBase
                 return BadRequest(ApiResponse<EntryResponseDto>.Fail("This entry is out of balance. Check your debit and credit amounts."));
             }
 
-            // 5. Actualizar campos escalares
+            // 5. Actualizar balances: revertir líneas viejas, aplicar nuevas
+            await ApplyBalanceDeltasAsync(entry.EntryLines, reverse: true);
+            await ApplyBalanceDeltasAsync(newLines);
+
+            // 6. Actualizar campos escalares
             entry.Title = putEntryRequestDto.Title;
             entry.Description = putEntryRequestDto.Description;
             entry.Date = DateTime.SpecifyKind(putEntryRequestDto.Date.UtcDateTime, DateTimeKind.Utc);
 
-            // 6. Reemplazar líneas
+            // 7. Reemplazar líneas
             _appDbContext.EntryLines.RemoveRange(entry.EntryLines);
             entry.EntryLines.Clear();
             foreach (var line in newLines)
@@ -242,6 +267,7 @@ public class EntryController : ControllerBase
             _logger.LogInformation("DELETE Entry with Id: {Id} by User: {User}", Id, userId); 
 
             var entry = await _appDbContext.Entries
+                        .Include(e => e.EntryLines)
                         .Where(e => e.Id == Id && e.UserId == userId)
                         .FirstOrDefaultAsync();
             if(entry == null)
@@ -250,6 +276,7 @@ public class EntryController : ControllerBase
                 return NotFound(ApiResponse<EntryResponseDto>.Fail("Entry not exists."));
             }
 
+            await ApplyBalanceDeltasAsync(entry.EntryLines, reverse: true);
             _appDbContext.Entries.Remove(entry);
             await _appDbContext.SaveChangesAsync();
 
