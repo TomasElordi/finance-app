@@ -4,7 +4,7 @@ import { useActionState, useEffect, useState } from "react";
 import { createAccountAction } from "@/src/features/accounts/actions/create-account";
 import { CreateAccountActionState } from "@/src/features/accounts/types/create-account-action-state";
 import { NatureType } from "@/src/features/accounts/types/account";
-import { getNatureLabel } from "../utils/nature";
+import { NATURE_OPTIONS } from "../utils/nature";
 import {
   Sheet,
   SheetContent,
@@ -29,14 +29,6 @@ import {
 } from "@/src/shared/components/ui/select";
 
 const initialState: CreateAccountActionState = { status: "idle" };
-
-const NATURE_OPTIONS = [
-  NatureType.Asset,
-  NatureType.Liability,
-  NatureType.Equity,
-  NatureType.Income,
-  NatureType.Expense,
-].map((value) => ({ value, label: getNatureLabel(NatureType[value]) }));
 
 export default function CreateAccountSheet() {
   const [open, setOpen] = useState(false);
@@ -83,10 +75,7 @@ export default function CreateAccountSheet() {
 
           <Field data-invalid={natureError}>
             <FieldLabel>Tipo</FieldLabel>
-            <Select
-              name="nature"
-              defaultValue={String(NatureType.Asset)}
-            >
+            <Select name="nature" defaultValue={String(NatureType.Asset)}>
               <SelectTrigger className="w-full" aria-invalid={natureError}>
                 <SelectValue />
               </SelectTrigger>
