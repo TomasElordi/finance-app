@@ -105,7 +105,10 @@ export default function RegisterCard() {
                 <InputGroupAddon align="inline-end">
                   <Button
                     variant="ghost"
-                    onClick={() => setShowPassword(!showPassword)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowPassword(!showPassword);
+                    }}
                   >
                     {!showPassword ? <EyeIcon /> : <EyeOffIcon />}
                   </Button>
