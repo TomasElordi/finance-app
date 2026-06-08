@@ -52,7 +52,6 @@ export async function createEntryAction(
   const hh = String(Math.floor(absOffset / 60)).padStart(2, "0");
   const mm = String(absOffset % 60).padStart(2, "0");
   const date = `${parsed.data.date}T00:00:00.000${sign}${hh}:${mm}`;
-  console.log("Date:", date);
   try {
     const body = {
       ...parsed.data,

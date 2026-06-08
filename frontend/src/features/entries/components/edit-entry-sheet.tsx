@@ -8,6 +8,7 @@ import { Account } from "@/src/features/accounts/types/account";
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
@@ -30,7 +31,10 @@ interface EditEntrySheetProps {
   accounts: Account[];
 }
 
-export default function EditEntrySheet({ entry, accounts }: EditEntrySheetProps) {
+export default function EditEntrySheet({
+  entry,
+  accounts,
+}: EditEntrySheetProps) {
   const [open, setOpen] = useState(false);
   const [resetKey, setResetKey] = useState(0);
   const [state, formAction, pending] = useActionState(
@@ -47,8 +51,7 @@ export default function EditEntrySheet({ entry, accounts }: EditEntrySheetProps)
 
   const titleError = state.status === "error" && !!state.errors.title;
   const dateError = state.status === "error" && !!state.errors.date;
-  const entryLinesError =
-    state.status === "error" && !!state.errors.entryLines;
+  const entryLinesError = state.status === "error" && !!state.errors.entryLines;
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -60,6 +63,9 @@ export default function EditEntrySheet({ entry, accounts }: EditEntrySheetProps)
       <SheetContent className="sm:max-w-lg overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Editar asiento</SheetTitle>
+          <SheetDescription>
+            Modifica los datos del asiento contable.
+          </SheetDescription>
         </SheetHeader>
         <form action={formAction} className="flex flex-col gap-4 p-4">
           <input type="hidden" name="id" value={entry.id} />

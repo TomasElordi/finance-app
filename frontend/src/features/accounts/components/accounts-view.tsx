@@ -1,10 +1,16 @@
 "use client";
 
 import { Account } from "@/src/features/accounts/types/account";
+import { getNatureOrder } from "../utils/nature";
 import CreateAccountSheet from "./create-account-sheet";
-import DeleteAccountForm from "./delete-account-form";
+import AccountCard from "./account-card";
 
 export default function AccountsView({ accounts }: { accounts: Account[] }) {
+  const sorted = [...accounts].sort((a, b) => {
+    const orderDiff = getNatureOrder(a.nature) - getNatureOrder(b.nature);
+    return orderDiff !== 0 ? orderDiff : a.name.localeCompare(b.name, "es");
+  });
+
   return (
     <div className="p-6 flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -16,19 +22,8 @@ export default function AccountsView({ accounts }: { accounts: Account[] }) {
         <p className="text-muted-foreground text-sm">No tenés cuentas aún.</p>
       ) : (
         <div className="flex flex-col gap-2">
-          {accounts.map((account) => (
-            <div
-              key={account.id}
-              className="flex items-center justify-between rounded-lg border px-4 py-3"
-            >
-              <div className="flex flex-col gap-0.5">
-                <span className="font-medium">{account.name}</span>
-                <span className="text-xs text-muted-foreground">
-                  {account.nature}
-                </span>
-              </div>
-              <DeleteAccountForm id={account.id} />
-            </div>
+          {sorted.map((account) => (
+            <AccountCard key={account.id} account={account} />
           ))}
         </div>
       )}

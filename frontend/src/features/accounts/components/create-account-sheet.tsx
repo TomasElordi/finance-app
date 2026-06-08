@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState } from "react";
 import { createAccountAction } from "@/src/features/accounts/actions/create-account";
 import { CreateAccountActionState } from "@/src/features/accounts/types/create-account-action-state";
 import { NatureType } from "@/src/features/accounts/types/account";
+import { getNatureLabel } from "../utils/nature";
 import {
   Sheet,
   SheetContent,
@@ -30,12 +31,12 @@ import {
 const initialState: CreateAccountActionState = { status: "idle" };
 
 const NATURE_OPTIONS = [
-  { value: NatureType.Asset, label: "Asset" },
-  { value: NatureType.Liability, label: "Liability" },
-  { value: NatureType.Equity, label: "Equity" },
-  { value: NatureType.Income, label: "Income" },
-  { value: NatureType.Expense, label: "Expense" },
-];
+  NatureType.Asset,
+  NatureType.Liability,
+  NatureType.Equity,
+  NatureType.Income,
+  NatureType.Expense,
+].map((value) => ({ value, label: getNatureLabel(NatureType[value]) }));
 
 export default function CreateAccountSheet() {
   const [open, setOpen] = useState(false);

@@ -7,6 +7,7 @@ import { Account } from "@/src/features/accounts/types/account";
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
@@ -59,9 +60,13 @@ export default function CreateEntrySheet({ accounts }: CreateEntrySheetProps) {
       <SheetTrigger asChild>
         <Button>Nuevo asiento</Button>
       </SheetTrigger>
-      <SheetContent className="sm:max-w-lg overflow-y-auto">
+      <SheetContent className="sm:max-w-xl overflow-y-auto md:min-w-125">
         <SheetHeader>
           <SheetTitle>Nuevo asiento</SheetTitle>
+          <SheetDescription>
+            Registra un nuevo movimiento contable con sus cuentas del debe y
+            haber.
+          </SheetDescription>
         </SheetHeader>
         <form action={formAction} className="flex flex-col gap-4 p-4">
           <input

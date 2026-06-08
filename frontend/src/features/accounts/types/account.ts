@@ -11,4 +11,5 @@ export interface Account {
   userId: string;
   name: string;
   nature: string;
+  balance: number;
 }

@@ -29,61 +29,65 @@ export default function EntriesView({ entries, accounts }: EntriesViewProps) {
         <p className="text-muted-foreground text-sm">No tenés asientos aún.</p>
       ) : (
         <div className="flex flex-col gap-3">
-          {entries.map((entry) => (
-            <div
-              key={entry.id}
-              className="flex flex-col gap-3 rounded-lg border px-4 py-3"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex flex-col gap-0.5">
-                  <span className="font-medium">{entry.title}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(entry.date).toLocaleDateString("es-AR", {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </span>
-                  {entry.description && (
-                    <span className="text-sm text-muted-foreground mt-0.5">
-                      {entry.description}
+          {entries
+            .sort((a, b) => {
+              return b.date.localeCompare(a.date, "es");
+            })
+            .map((entry) => (
+              <div
+                key={entry.id}
+                className="flex flex-col gap-3 rounded-lg border px-4 py-3"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-medium">{entry.title}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(entry.date).toLocaleDateString("es-AR", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })}
                     </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <EditEntrySheet entry={entry} accounts={accounts} />
-                  <DeleteEntryForm id={entry.id} />
-                </div>
-              </div>
-
-              {entry.entryLines.length > 0 && (
-                <div className="flex flex-col gap-1 border-t pt-2">
-                  {entry.entryLines.map((line) => (
-                    <div
-                      key={line.id}
-                      className="flex items-center justify-between text-sm"
-                    >
-                      <span className="text-muted-foreground">
-                        {accountsMap[line.accountId] ?? "Cuenta desconocida"}
+                    {entry.description && (
+                      <span className="text-sm text-muted-foreground mt-0.5">
+                        {entry.description}
                       </span>
-                      <div className="flex items-center gap-3">
-                        <span
-                          className={
-                            line.type === "Debit"
-                              ? "text-red-500"
-                              : "text-green-500"
-                          }
-                        >
-                          {line.type === "Debit" ? "D" : "C"} $
-                          {Number(line.amount).toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <EditEntrySheet entry={entry} accounts={accounts} />
+                    <DeleteEntryForm id={entry.id} />
+                  </div>
                 </div>
-              )}
-            </div>
-          ))}
+
+                {entry.entryLines.length > 0 && (
+                  <div className="flex flex-col gap-1 border-t pt-2">
+                    {entry.entryLines.map((line) => (
+                      <div
+                        key={line.id}
+                        className="flex items-center justify-between text-sm"
+                      >
+                        <span className="text-muted-foreground">
+                          {accountsMap[line.accountId] ?? "Cuenta desconocida"}
+                        </span>
+                        <div className="flex items-center gap-3">
+                          <span
+                            className={
+                              line.type === "Debit"
+                                ? "text-red-500"
+                                : "text-green-500"
+                            }
+                          >
+                            {line.type === "Debit" ? "D" : "C"} $
+                            {Number(line.amount).toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
         </div>
       )}
     </div>
