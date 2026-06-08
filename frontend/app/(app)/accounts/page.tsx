@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { serverFetch } from "@/src/shared/lib/api";
 import { ApiResponse } from "@/src/shared/types/api";
 import { Account } from "@/src/features/accounts/types/account";
