@@ -20,6 +20,12 @@ import {
 } from "@/src/shared/components/ui/field";
 import { LoginActionState } from "@/src/features/auth/login/types/login-action-state";
 import Link from "next/link";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/src/shared/components/ui/input-group";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
 
 const initialState: LoginActionState = { status: "idle" };
 
@@ -29,6 +35,7 @@ export default function LoginCard() {
     loginAction,
     initialState,
   );
+  const [showPassword, setShowPassword] = useState(false);
   const emailError = state.status === "error" && !!state.errors.email;
   const passwordError = state.status === "error" && !!state.errors.password;
   return (
@@ -74,13 +81,26 @@ export default function LoginCard() {
                   Forgot your password?
                 </a>
               </div>
-              <Input
-                id="password"
-                type="password"
-                name="password"
-                aria-invalid={passwordError}
-                required
-              />
+              <InputGroup>
+                <InputGroupInput
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  aria-invalid={passwordError}
+                  required
+                />
+                <InputGroupAddon align="inline-end">
+                  <Button
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowPassword(!showPassword);
+                    }}
+                  >
+                    {!showPassword ? <EyeIcon /> : <EyeOffIcon />}
+                  </Button>
+                </InputGroupAddon>
+              </InputGroup>
               {passwordError && (
                 <FieldDescription className="text-sm text-destructive">
                   {state.errors.password}

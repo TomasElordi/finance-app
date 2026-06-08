@@ -19,6 +19,13 @@ import {
 } from "@/src/shared/components/ui/field";
 import { RegisterActionState } from "@/src/features/auth/register/types/register-action-state";
 import { registerAction } from "@/src/features/auth/register/actions/register";
+import Link from "next/link";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/src/shared/components/ui/input-group";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
 
 const initialState: RegisterActionState = { status: "idle" };
 
@@ -29,6 +36,7 @@ export default function RegisterCard() {
     registerAction,
     initialState,
   );
+  const [showPassword, setShowPassword] = useState(false);
   const nameError = state.status === "error" && !!state.errors.name;
   const emailError = state.status === "error" && !!state.errors.email;
   const passwordError = state.status === "error" && !!state.errors.password;
@@ -42,7 +50,9 @@ export default function RegisterCard() {
           Enter your email below to Register to your account
         </CardDescription>
         <CardAction>
-          <Button variant="link">Sign Up</Button>
+          <Button variant="link">
+            <Link href="/login"> Sign in</Link>
+          </Button>
         </CardAction>
       </CardHeader>
       <CardContent>
@@ -84,13 +94,23 @@ export default function RegisterCard() {
               <div className="flex items-center">
                 <FieldLabel htmlFor="password">Password</FieldLabel>
               </div>
-              <Input
-                id="password"
-                type="password"
-                name="password"
-                aria-invalid={passwordError}
-                required
-              />
+              <InputGroup>
+                <InputGroupInput
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  aria-invalid={passwordError}
+                  required
+                />
+                <InputGroupAddon align="inline-end">
+                  <Button
+                    variant="ghost"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {!showPassword ? <EyeIcon /> : <EyeOffIcon />}
+                  </Button>
+                </InputGroupAddon>
+              </InputGroup>
               {passwordError && (
                 <FieldDescription className="text-sm text-destructive">
                   {state.errors.password}
@@ -103,13 +123,23 @@ export default function RegisterCard() {
                   Confirm password
                 </FieldLabel>
               </div>
-              <Input
-                id="confirm_password"
-                type="password"
-                name="confirm_password"
-                aria-invalid={confirmPasswordError}
-                required
-              />
+              <InputGroup>
+                <InputGroupInput
+                  id="confirm_password"
+                  type={showPassword ? "text" : "password"}
+                  name="confirm_password"
+                  aria-invalid={confirmPasswordError}
+                  required
+                />
+                <InputGroupAddon align="inline-end">
+                  <Button
+                    variant="ghost"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {!showPassword ? <EyeIcon /> : <EyeOffIcon />}
+                  </Button>
+                </InputGroupAddon>
+              </InputGroup>
               {confirmPasswordError && (
                 <FieldDescription className="text-sm text-destructive">
                   {state.errors.confirm_password}
