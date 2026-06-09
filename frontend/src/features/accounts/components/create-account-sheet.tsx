@@ -41,7 +41,7 @@ export default function CreateAccountSheet() {
     if (state.status === "success") {
       setOpen(false);
     }
-  }, [state.status]);
+  }, [state]);
 
   const nameError = state.status === "error" && !!state.errors.name;
   const natureError = state.status === "error" && !!state.errors.nature;
