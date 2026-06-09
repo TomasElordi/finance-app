@@ -22,6 +22,7 @@ import {
 import { Separator } from "@/src/shared/components/ui/separator";
 import EntryLinesFields from "./entry-lines-fields";
 import { useAccounts } from "../context/account-context";
+import AlertConfirm from "@/src/shared/components/alert-confirm";
 
 const initialState: CreateEntryActionState = { status: "idle" };
 
@@ -31,6 +32,7 @@ export default function CreateEntrySheet() {
   const [open, setOpen] = useState(false);
   const [resetKey, setResetKey] = useState(0);
   const [timezoneOffset, setTimezoneOffset] = useState(0);
+  const [alertConfirmOpen, setAlertConfirmOpen] = useState(false);
   useEffect(() => {
     setTimezoneOffset(new Date().getTimezoneOffset());
   }, []);
@@ -54,91 +56,115 @@ export default function CreateEntrySheet() {
   const dateError = state.status === "error" && !!state.errors.date;
   const entryLinesError = state.status === "error" && !!state.errors.entryLines;
 
+  const handleOpenSheet = (open: boolean) => {
+    console.log("SHEETS OPEN :", open);
+    if (!open) {
+      setAlertConfirmOpen(true);
+    } else {
+      setOpen(open);
+    }
+  };
+  const onAlertConfirm = () => {
+    setOpen(false);
+    setAlertConfirmOpen(false);
+  };
+  const onAlertCancel = () => {
+    setAlertConfirmOpen(false);
+  };
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button>Nuevo asiento</Button>
-      </SheetTrigger>
-      <SheetContent className="sm:max-w-xl overflow-y-auto md:min-w-125">
-        <SheetHeader>
-          <SheetTitle>Nuevo asiento</SheetTitle>
-          <SheetDescription>
-            Registra un nuevo movimiento contable con sus cuentas del debe y
-            haber.
-          </SheetDescription>
-        </SheetHeader>
-        <form action={formAction} className="flex flex-col gap-4 p-4">
-          <input
-            type="hidden"
-            name="timezoneOffset"
-            value={timezoneOffset}
-          ></input>
-          <Field data-invalid={titleError}>
-            <FieldLabel htmlFor="title">Título</FieldLabel>
-            <Input
-              id="title"
-              name="title"
-              type="text"
-              placeholder="Ej: Pago de alquiler"
-              aria-invalid={titleError}
-              required
-            />
-            {titleError && (
-              <FieldDescription className="text-destructive">
-                {state.errors.title}
-              </FieldDescription>
+    <>
+      <AlertConfirm
+        title="¿Estás seguro que quieres cerrar el formulario?"
+        description="Esta acción no se puede deshacer."
+        open={alertConfirmOpen}
+        onConfirm={onAlertConfirm}
+        onCancel={onAlertCancel}
+      />
+      <Sheet open={open} onOpenChange={handleOpenSheet}>
+        <SheetTrigger asChild>
+          <Button>Nuevo asiento</Button>
+        </SheetTrigger>
+        <SheetContent className="sm:max-w-xl overflow-y-auto md:min-w-125">
+          <SheetHeader>
+            <SheetTitle>Nuevo asiento</SheetTitle>
+            <SheetDescription>
+              Registra un nuevo movimiento contable con sus cuentas del debe y
+              haber.
+            </SheetDescription>
+          </SheetHeader>
+          <form action={formAction} className="flex flex-col gap-4 p-4">
+            <input
+              type="hidden"
+              name="timezoneOffset"
+              value={timezoneOffset}
+            ></input>
+            <Field data-invalid={titleError}>
+              <FieldLabel htmlFor="title">Título</FieldLabel>
+              <Input
+                id="title"
+                name="title"
+                type="text"
+                placeholder="Ej: Pago de alquiler"
+                aria-invalid={titleError}
+                required
+              />
+              {titleError && (
+                <FieldDescription className="text-destructive">
+                  {state.errors.title}
+                </FieldDescription>
+              )}
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="description">
+                Descripción (opcional)
+              </FieldLabel>
+              <Input
+                id="description"
+                name="description"
+                type="text"
+                placeholder="Notas adicionales"
+              />
+            </Field>
+
+            <Field data-invalid={dateError}>
+              <FieldLabel htmlFor="date">Fecha</FieldLabel>
+              <Input
+                id="date"
+                name="date"
+                type="date"
+                aria-invalid={dateError}
+                required
+              />
+              {dateError && (
+                <FieldDescription className="text-destructive">
+                  {state.errors.date}
+                </FieldDescription>
+              )}
+            </Field>
+
+            <div className="flex flex-col gap-2">
+              <FieldLabel>Líneas del asiento</FieldLabel>
+              <EntryLinesFields key={resetKey} accounts={accounts} />
+              {entryLinesError && (
+                <p className="text-sm text-destructive">
+                  {state.errors.entryLines}
+                </p>
+              )}
+            </div>
+
+            {state.status === "error" && state.message && (
+              <p className="text-sm text-destructive">{state.message}</p>
             )}
-          </Field>
 
-          <Field>
-            <FieldLabel htmlFor="description">
-              Descripción (opcional)
-            </FieldLabel>
-            <Input
-              id="description"
-              name="description"
-              type="text"
-              placeholder="Notas adicionales"
-            />
-          </Field>
+            <Separator />
 
-          <Field data-invalid={dateError}>
-            <FieldLabel htmlFor="date">Fecha</FieldLabel>
-            <Input
-              id="date"
-              name="date"
-              type="date"
-              aria-invalid={dateError}
-              required
-            />
-            {dateError && (
-              <FieldDescription className="text-destructive">
-                {state.errors.date}
-              </FieldDescription>
-            )}
-          </Field>
-
-          <div className="flex flex-col gap-2">
-            <FieldLabel>Líneas del asiento</FieldLabel>
-            <EntryLinesFields key={resetKey} accounts={accounts} />
-            {entryLinesError && (
-              <p className="text-sm text-destructive">
-                {state.errors.entryLines}
-              </p>
-            )}
-          </div>
-
-          {state.status === "error" && state.message && (
-            <p className="text-sm text-destructive">{state.message}</p>
-          )}
-
-          <Separator />
-
-          <Button type="submit" disabled={pending}>
-            {pending ? "Creando..." : "Crear asiento"}
-          </Button>
-        </form>
-      </SheetContent>
-    </Sheet>
+            <Button type="submit" disabled={pending}>
+              {pending ? "Creando..." : "Crear asiento"}
+            </Button>
+          </form>
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }
