@@ -1,8 +1,11 @@
-import { getEntries } from "@/src/features/entries/data/get-entries";
-import { getAccounts } from "@/src/features/accounts/data/get-accounts";
-import EntriesView from "@/src/features/entries/components/entries-view";
+import { Suspense } from "react";
+import EntriesSection from "@/src/features/entries/components/entries-section";
+import EntriesSkeleton from "@/src/features/entries/components/entries-skeleton";
 
-export default async function EntriesPage() {
-  const [entries, accounts] = await Promise.all([getEntries(), getAccounts()]);
-  return <EntriesView entries={entries} accounts={accounts} />;
+export default function EntriesPage() {
+  return (
+    <Suspense fallback={<EntriesSkeleton />}>
+      <EntriesSection />
+    </Suspense>
+  );
 }

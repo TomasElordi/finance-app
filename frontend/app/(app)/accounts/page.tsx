@@ -1,7 +1,11 @@
-import { getAccounts } from "@/src/features/accounts/data/get-accounts";
-import AccountsView from "@/src/features/accounts/components/accounts-view";
+import { Suspense } from "react";
+import AccountsSection from "@/src/features/accounts/components/accounts-section";
+import AccountsSkeleton from "@/src/features/accounts/components/accounts-skeleton";
 
-export default async function AccountsPage() {
-  const accounts = await getAccounts();
-  return <AccountsView accounts={accounts} />;
+export default function AccountsPage() {
+  return (
+    <Suspense fallback={<AccountsSkeleton />}>
+      <AccountsSection />
+    </Suspense>
+  );
 }
