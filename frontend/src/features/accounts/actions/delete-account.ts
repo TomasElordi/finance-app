@@ -2,8 +2,7 @@
 
 import { serverFetch } from "@/src/shared/lib/api";
 import { ApiResponse } from "@/src/shared/types/api";
-import { revalidatePath } from "next/cache";
-import { PAGES } from "@/src/shared/lib/pages";
+import { revalidateTag, refresh } from "next/cache";
 import { ActionState } from "@/src/shared/types/action-state";
 
 export async function deleteAccountAction(
@@ -26,7 +25,8 @@ export async function deleteAccountAction(
       return { status: "error", message: response.message, errors: {} };
     }
 
-    revalidatePath(PAGES.ACCOUNTS);
+    revalidateTag("accounts", {});
+    refresh();
     return { status: "success" };
   } catch (error) {
     console.log("error", error);

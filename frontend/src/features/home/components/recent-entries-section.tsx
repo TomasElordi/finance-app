@@ -1,8 +1,8 @@
 import { getEntries } from "@/src/features/entries/data/get-entries";
 import { getAccounts } from "@/src/features/accounts/data/get-accounts";
-import EntriesView from "@/src/features/entries/components/entries-view";
+import RecentEntries from "./recent-entries";
 
-export default async function EntriesPage() {
+export default async function RecentEntriesSection() {
   const [entries, accounts] = await Promise.all([getEntries(), getAccounts()]);
-  return <EntriesView entries={entries} accounts={accounts} />;
+  return <RecentEntries entries={entries} accounts={accounts} />;
 }

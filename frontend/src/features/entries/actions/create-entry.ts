@@ -2,8 +2,7 @@
 
 import { serverFetch } from "@/src/shared/lib/api";
 import { ApiResponse } from "@/src/shared/types/api";
-import { revalidatePath } from "next/cache";
-import { PAGES } from "@/src/shared/lib/pages";
+import { revalidateTag, refresh } from "next/cache";
 import { CreateEntrySchema } from "@/src/features/entries/types/create-entry-schema";
 import { CreateEntryActionState } from "@/src/features/entries/types/create-entry-action-state";
 import { Entry } from "@/src/features/entries/types/entry";
@@ -68,7 +67,9 @@ export async function createEntryAction(
       return { status: "error", message: response.message, errors: {} };
     }
 
-    revalidatePath(PAGES.ENTRIES);
+    revalidateTag("entries", {});
+    revalidateTag("accounts", {});
+    refresh();
     return { status: "success" };
   } catch (error) {
     console.log("error", error);

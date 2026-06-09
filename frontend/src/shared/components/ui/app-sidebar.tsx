@@ -13,10 +13,12 @@ import {
   SidebarMenuItem,
 } from "./sidebar";
 import {
+  BarChart2,
   BookOpen,
   ChevronsUpDown,
   CircleDollarSign,
   LogOut,
+  Target,
   User2,
   Wallet,
 } from "lucide-react";
@@ -70,6 +72,22 @@ export function AppSidebar({ userName }: { userName: string }) {
                 <Link href="/entries">
                   <BookOpen />
                   <span>Asientos</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <Link href="/reports">
+                  <BarChart2 />
+                  <span>Reportes</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <Link href="/budget">
+                  <Target />
+                  <span>Presupuesto</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
