@@ -47,7 +47,7 @@ export default function CreateEntrySheet() {
       setOpen(false);
       setResetKey((k) => k + 1);
     }
-  }, [state.status]);
+  }, [state]);
 
   useEffect(() => {
     setTimezoneOffset(new Date().getTimezoneOffset());
