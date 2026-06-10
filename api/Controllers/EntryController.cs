@@ -236,13 +236,11 @@ public class EntryController : ControllerBase
 
             // 7. Reemplazar líneas
             _appDbContext.EntryLines.RemoveRange(entry.EntryLines);
-            entry.EntryLines.Clear();
-            foreach (var line in newLines)
-                entry.EntryLines.Add(line);
+            _appDbContext.EntryLines.AddRange(newLines);
 
             await _appDbContext.SaveChangesAsync();
 
-            var entryLinesDto = entry.EntryLines.Adapt<List<EntryLineResponseDto>>();
+            var entryLinesDto = newLines.Adapt<List<EntryLineResponseDto>>();
             return Ok(ApiResponse<EntryResponseDto>.Ok(new EntryResponseDto
             {
                 Id = entry.Id,
