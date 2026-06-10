@@ -68,6 +68,11 @@ public class AccountController(ILogger<AccountController> logger, IAccountServic
             logger.LogWarning(ex, "Forbidden: delete account {Id}.", id);
             return StatusCode(403, ApiResponse<AccountResponseDto>.Fail(ex.Message));
         }
+        catch (ConflictException ex)
+        {
+            logger.LogInformation(ex, "Conflict: delete account {Id}.", id);
+            return Conflict(ApiResponse<AccountResponseDto>.Fail(ex.Message));
+        }
         catch (Exception ex)
         {
             logger.LogInformation(ex, "Internal Server Error on DELETE Account. Request: {@Request}", id);

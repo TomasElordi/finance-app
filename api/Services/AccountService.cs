@@ -33,6 +33,10 @@ public class AccountService(AppDbContext db) : IAccountService
         if (account.UserId != userId)
             throw new ForbiddenException("Unauthorized.");
 
+        var hasEntryLines = await db.EntryLines.AnyAsync(el => el.AccountId == accountId);
+        if (hasEntryLines)
+            throw new ConflictException("Cannot delete an account that has associated journal entries.");
+
         db.Accounts.Remove(account);
         await db.SaveChangesAsync();
         return true;
