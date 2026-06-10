@@ -69,6 +69,11 @@ public class EntryController(ILogger<EntryController> logger, IEntryService entr
             logger.LogInformation(ex.Message);
             return BadRequest(ApiResponse<EntryResponseDto>.Fail(ex.Message));
         }
+        catch (ConflictException ex)
+        {
+            logger.LogWarning(ex.Message);
+            return Conflict(ApiResponse<EntryResponseDto>.Fail(ex.Message));
+        }
         catch (Exception ex)
         {
             logger.LogInformation(ex, "Internal Server Error on POST Entry. Request: {@Request}", dto);
@@ -94,6 +99,11 @@ public class EntryController(ILogger<EntryController> logger, IEntryService entr
             logger.LogInformation(ex.Message);
             return BadRequest(ApiResponse<EntryResponseDto>.Fail(ex.Message));
         }
+        catch (ConflictException ex)
+        {
+            logger.LogWarning(ex.Message);
+            return Conflict(ApiResponse<EntryResponseDto>.Fail(ex.Message));
+        }
         catch (Exception ex)
         {
             logger.LogInformation(ex, "Internal Server Error on PUT Entry {Id}. Request: {@Request}", Id, dto);
@@ -115,6 +125,11 @@ public class EntryController(ILogger<EntryController> logger, IEntryService entr
                 return NotFound(ApiResponse<EntryResponseDto>.Fail("Entry not exists."));
             }
             return NoContent();
+        }
+        catch (ConflictException ex)
+        {
+            logger.LogWarning(ex.Message);
+            return Conflict(ApiResponse<EntryResponseDto>.Fail(ex.Message));
         }
         catch (Exception ex)
         {

@@ -16,7 +16,7 @@ export async function deleteAccountAction(
   }
 
   try {
-    const response = await serverFetch<ApiResponse<null>>(`/account?Id=${id}`, {
+    const response = await serverFetch<ApiResponse<null>>(`/account/${id}`, {
       method: "DELETE",
       auth: true,
     });

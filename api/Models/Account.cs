@@ -11,6 +11,7 @@ public class Account
     public User User { get; set; } = null!;
     public required string Name { get; set; }
     public required NatureType Nature { get; set;}
+    [ConcurrencyCheck]
     public decimal Balance { get; set; } = 0m;
 };
 

@@ -82,9 +82,24 @@ public class EntryService(AppDbContext db) : IEntryService
         if (sum != 0)
             throw new ValidationException("This entry is out of balance. Check your debit and credit amounts.");
 
-        await ApplyBalanceDeltasAsync(entry.EntryLines);
-        db.Entries.Add(entry);
-        await db.SaveChangesAsync();
+        await using var tx = await db.Database.BeginTransactionAsync();
+        try
+        {
+            await ApplyBalanceDeltasAsync(entry.EntryLines);
+            db.Entries.Add(entry);
+            await db.SaveChangesAsync();
+            await tx.CommitAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            await tx.RollbackAsync();
+            throw new ConflictException("Account balance was modified concurrently. Please retry.");
+        }
+        catch
+        {
+            await tx.RollbackAsync();
+            throw;
+        }
 
         return new EntryResponseDto { Id = entry.Id, Date = entry.Date, Title = entry.Title, Description = entry.Description, EntryLines = entry.EntryLines.Adapt<List<EntryLineResponseDto>>() };
     }
@@ -124,16 +139,31 @@ public class EntryService(AppDbContext db) : IEntryService
         if (sum != 0)
             throw new ValidationException("This entry is out of balance. Check your debit and credit amounts.");
 
-        await ApplyBalanceDeltasAsync(entry.EntryLines, reverse: true);
-        await ApplyBalanceDeltasAsync(newLines);
+        await using var tx = await db.Database.BeginTransactionAsync();
+        try
+        {
+            await ApplyBalanceDeltasAsync(entry.EntryLines, reverse: true);
+            await ApplyBalanceDeltasAsync(newLines);
 
-        entry.Title = dto.Title;
-        entry.Description = dto.Description;
-        entry.Date = DateTime.SpecifyKind(dto.Date.UtcDateTime, DateTimeKind.Utc);
+            entry.Title = dto.Title;
+            entry.Description = dto.Description;
+            entry.Date = DateTime.SpecifyKind(dto.Date.UtcDateTime, DateTimeKind.Utc);
 
-        db.EntryLines.RemoveRange(entry.EntryLines);
-        db.EntryLines.AddRange(newLines);
-        await db.SaveChangesAsync();
+            db.EntryLines.RemoveRange(entry.EntryLines);
+            db.EntryLines.AddRange(newLines);
+            await db.SaveChangesAsync();
+            await tx.CommitAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            await tx.RollbackAsync();
+            throw new ConflictException("Account balance was modified concurrently. Please retry.");
+        }
+        catch
+        {
+            await tx.RollbackAsync();
+            throw;
+        }
 
         return new EntryResponseDto { Id = entry.Id, Date = entry.Date, Title = entry.Title, Description = entry.Description, EntryLines = newLines.Adapt<List<EntryLineResponseDto>>() };
     }
@@ -148,9 +178,25 @@ public class EntryService(AppDbContext db) : IEntryService
         if (entry == null)
             return false;
 
-        await ApplyBalanceDeltasAsync(entry.EntryLines, reverse: true);
-        db.Entries.Remove(entry);
-        await db.SaveChangesAsync();
+        await using var tx = await db.Database.BeginTransactionAsync();
+        try
+        {
+            await ApplyBalanceDeltasAsync(entry.EntryLines, reverse: true);
+            db.Entries.Remove(entry);
+            await db.SaveChangesAsync();
+            await tx.CommitAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            await tx.RollbackAsync();
+            throw new ConflictException("Account balance was modified concurrently. Please retry.");
+        }
+        catch
+        {
+            await tx.RollbackAsync();
+            throw;
+        }
+
         return true;
     }
 }

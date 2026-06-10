@@ -48,29 +48,29 @@ public class AccountController(ILogger<AccountController> logger, IAccountServic
         }
     }
 
-    [HttpDelete]
-    public async Task<IActionResult> Delete([FromQuery] Guid Id)
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete([FromRoute] Guid id)
     {
         try
         {
             var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
-            logger.LogInformation("DELETE Account with Id: {Id} by User: {User}", Id, userId);
-            var found = await accountService.DeleteAccountAsync(userId, Id);
+            logger.LogInformation("DELETE Account with Id: {Id} by User: {User}", id, userId);
+            var found = await accountService.DeleteAccountAsync(userId, id);
             if (!found)
             {
-                logger.LogInformation("Account with Id: {Id} not exists.", Id);
-                return BadRequest(ApiResponse<AccountResponseDto>.Fail("Account not exists."));
+                logger.LogInformation("Account with Id: {Id} not exists.", id);
+                return NotFound(ApiResponse<AccountResponseDto>.Fail("Account not exists."));
             }
             return NoContent();
         }
         catch (ForbiddenException ex)
         {
-            logger.LogWarning(ex, "Unauthorized for delete account {Id}.", Id);
-            return Unauthorized(ApiResponse<AccountResponseDto>.Fail(ex.Message));
+            logger.LogWarning(ex, "Forbidden: delete account {Id}.", id);
+            return StatusCode(403, ApiResponse<AccountResponseDto>.Fail(ex.Message));
         }
         catch (Exception ex)
         {
-            logger.LogInformation(ex, "Internal Server Error on DELETE Account. Request: {@Request}", Id);
+            logger.LogInformation(ex, "Internal Server Error on DELETE Account. Request: {@Request}", id);
             return StatusCode(500, ApiResponse<AccountResponseDto>.Fail("Internal Server Error"));
         }
     }
