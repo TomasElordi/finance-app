@@ -1,110 +1,61 @@
-using api.Data;
 using api.DTOs;
-using api.Models;
+using api.Exceptions;
 using api.Services;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace api.Controllers;
 
 [ApiController]
 [Route("api/auth")]
-public class AuthController : ControllerBase
+public class AuthController(ILogger<AuthController> logger, IAuthService authService) : ControllerBase
 {
-    private readonly ILogger<AuthController> _logger;
-    private readonly AppDbContext _appDbContext;
-    private readonly IJwtService _jwtService;
-
-    public AuthController(ILogger<AuthController> logger,AppDbContext appDbContext, IJwtService jwtService)
-    {
-        _logger = logger;
-        _appDbContext = appDbContext;
-        _jwtService = jwtService;
-    }
-
     [HttpPost("register")]
     [ProducesResponseType(typeof(ApiResponse<AuthResponseDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> Post([FromBody] RegisterRequestDto registerRequestDto)
+    public async Task<IActionResult> Register([FromBody] RegisterRequestDto dto)
     {
-        _logger.LogInformation("Register for {Email}", registerRequestDto.Email);
+        logger.LogInformation("Register for {Email}", dto.Email);
         try
         {
-            //Hash password 
-            var hasher = new PasswordHasher<string>();
-            var hashed = hasher.HashPassword(null!, registerRequestDto.Password);
-
-            //Create user
-            var user = new User{ Id = Guid.NewGuid(), Name = registerRequestDto.Name, Email= registerRequestDto.Email, Password = hashed };
-
-            //Insert on db
-            _appDbContext.Users.Add(user);
-            await _appDbContext.SaveChangesAsync();
-
-            //Generate tokens
-            var tokens = _jwtService.GenerateTokens(user.Id, user.Name, user.Email);
-
-            var refreshToken = new RefreshToken{ Id = Guid.NewGuid(), UserId = user.Id, Token= tokens.RefreshToken , ExpirationDate = DateTime.UtcNow.AddDays(30)};
-            _appDbContext.RefreshToken.Add(refreshToken);
-            await _appDbContext.SaveChangesAsync();
-
-            _logger.LogInformation("User {Email} created", registerRequestDto.Email);
-
-            //Return response
-            return Ok(ApiResponse<AuthResponseDto>.Ok(new AuthResponseDto{AccessToken = tokens.AccessToken, RefreshToken= tokens.RefreshToken,  User = new UserResponseDto { Id = user.Id, Name =  user.Name, Email = user.Email } }));
+            var result = await authService.RegisterAsync(dto);
+            logger.LogInformation("User {Email} created", dto.Email);
+            return Ok(ApiResponse<AuthResponseDto>.Ok(result));
         }
-        catch (DbUpdateException ex) when (ex.InnerException is PostgresException pgEx && pgEx.SqlState == PostgresErrorCodes.UniqueViolation)
+        catch (DuplicateEmailException ex)
         {
-            _logger.LogWarning(ex, "User with {Email} already exists.", registerRequestDto.Email);
-            return BadRequest(ApiResponse<UserResponseDto>.Fail("Email already exists."));
+            logger.LogWarning(ex, "User with {Email} already exists.", dto.Email);
+            return BadRequest(ApiResponse<AuthResponseDto>.Fail(ex.Message));
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
-             _logger.LogCritical(ex, "Internal Server Error on Register");
-            return StatusCode(500, ApiResponse<AccountResponseDto>.Fail("Internal Server Error"));
+            logger.LogCritical(ex, "Internal Server Error on Register");
+            return StatusCode(500, ApiResponse<AuthResponseDto>.Fail("Internal Server Error"));
         }
     }
 
     [HttpPost("login")]
     [ProducesResponseType(typeof(ApiResponse<AuthResponseDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> Post([FromBody] LoginRequestDto loginRequestDto)
+    public async Task<IActionResult> Login([FromBody] LoginRequestDto dto)
     {
-        
-        _logger.LogInformation("Login for {Email}", loginRequestDto.Email);
-        //Find on db
-        try{
-            User? user = await _appDbContext.Users.FirstOrDefaultAsync(u => u.Email == loginRequestDto.Email);
-
-            if(user == null)
-            {
-                _logger.LogWarning("User {Email} not exists", loginRequestDto.Email);
-                return BadRequest(ApiResponse<UserResponseDto>.Fail("User not exists."));
-            };
-            //Hash password 
-            var hasher = new PasswordHasher<string>();
-            var result = hasher.VerifyHashedPassword(null!, user.Password, loginRequestDto.Password);
-
-            if(result != PasswordVerificationResult.Success)
-            {
-                _logger.LogWarning("Wrong password for {Email}",loginRequestDto.Email);
-                return BadRequest(ApiResponse<UserResponseDto>.Fail("Wrong password."));
-            }
-
-            //Generate tokens
-            var tokens = _jwtService.GenerateTokens(user.Id, user.Name, user.Email);
-
-            var refreshToken = new RefreshToken{ Id = Guid.NewGuid(), UserId = user.Id, Token= tokens.RefreshToken , ExpirationDate = DateTime.UtcNow.AddDays(30)};
-            _appDbContext.RefreshToken.Add(refreshToken);
-            await _appDbContext.SaveChangesAsync();
-
-            //Return response
-            return Ok(ApiResponse<AuthResponseDto>.Ok(new AuthResponseDto{AccessToken = tokens.AccessToken, RefreshToken= tokens.RefreshToken,  User = new UserResponseDto { Id = user.Id, Name =  user.Name, Email = user.Email } }));
-        }
-        catch(Exception ex)
+        logger.LogInformation("Login for {Email}", dto.Email);
+        try
         {
-             _logger.LogCritical(ex, "Internal Server Error on Login");
-            return StatusCode(500, ApiResponse<AccountResponseDto>.Fail("Internal Server Error"));
+            var result = await authService.LoginAsync(dto);
+            return Ok(ApiResponse<AuthResponseDto>.Ok(result));
+        }
+        catch (NotFoundException ex)
+        {
+            logger.LogWarning(ex, "User {Email} not exists", dto.Email);
+            return BadRequest(ApiResponse<AuthResponseDto>.Fail(ex.Message));
+        }
+        catch (ValidationException ex)
+        {
+            logger.LogWarning(ex, "Wrong password for {Email}", dto.Email);
+            return BadRequest(ApiResponse<AuthResponseDto>.Fail(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            logger.LogCritical(ex, "Internal Server Error on Login");
+            return StatusCode(500, ApiResponse<AuthResponseDto>.Fail("Internal Server Error"));
         }
     }
 }
