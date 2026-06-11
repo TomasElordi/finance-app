@@ -19,6 +19,14 @@ builder.Services.AddControllers();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+
+var dbHost = Environment.GetEnvironmentVariable("POSTGRES_HOST");
+var dbName = Environment.GetEnvironmentVariable("POSTGRES_DB");
+var dbUser = Environment.GetEnvironmentVariable("POSTGRES_USER");
+var dbPassword = Environment.GetEnvironmentVariable("POSTGRES_PASSWORD");
+
+var connectionString = $"Host={dbHost};Database={dbName};Username={dbUser};Password={dbPassword}";
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")).UseSnakeCaseNamingConvention());;
 

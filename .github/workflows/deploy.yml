@@ -35,4 +35,6 @@ jobs:
             docker load < /home/opc/api.tar.gz
             docker stop api || true
             docker rm api || true
-            docker run -d --name api --restart always -p 8080:8080 api
+            docker run -d --name api --restart always -p 8080:8080 \
+              --env-file /home/opc/.env \
+              api
