@@ -13,11 +13,16 @@ public class AppDbContext : DbContext
     public DbSet<Entry> Entries { get; set; }
     public DbSet<EntryLine> EntryLines { get; set; }
     public DbSet<RefreshToken> RefreshToken { get; set; }
+    public DbSet<Budget> Budgets { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<User>()
             .HasIndex(u => u.Email)
+            .IsUnique();
+
+        modelBuilder.Entity<Budget>()
+            .HasIndex(b => new { b.UserId, b.AccountId, b.Year, b.Month })
             .IsUnique();
     }
 }
