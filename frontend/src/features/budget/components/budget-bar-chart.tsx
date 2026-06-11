@@ -32,8 +32,8 @@ export default function BudgetBarChart({ items }: { items: BudgetSummaryItem[] }
   }));
 
   return (
-    <ChartContainer config={chartConfig} className="min-h-[300px] w-full">
-      <BarChart data={data} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+    <ChartContainer config={chartConfig} className="h-[260px] w-full">
+      <BarChart data={data} height={260} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
         <CartesianGrid vertical={false} />
         <XAxis
           dataKey="name"
