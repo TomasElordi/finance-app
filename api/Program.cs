@@ -21,11 +21,12 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
 var dbHost = Environment.GetEnvironmentVariable("POSTGRES_HOST");
+var dbPort = Environment.GetEnvironmentVariable("POSTGRES_PORT") ?? "5432";
 var dbName = Environment.GetEnvironmentVariable("POSTGRES_DB");
 var dbUser = Environment.GetEnvironmentVariable("POSTGRES_USER");
 var dbPassword = Environment.GetEnvironmentVariable("POSTGRES_PASSWORD");
 
-var connectionString = $"Host={dbHost};Database={dbName};Username={dbUser};Password={dbPassword}";
+var connectionString = $"postgresql://{dbUser}:{dbPassword}@{dbHost}:{dbPort}/{dbName}?sslmode=require";
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString).UseSnakeCaseNamingConvention());
