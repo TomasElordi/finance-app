@@ -26,7 +26,7 @@ var dbName = Environment.GetEnvironmentVariable("POSTGRES_DB");
 var dbUser = Environment.GetEnvironmentVariable("POSTGRES_USER");
 var dbPassword = Environment.GetEnvironmentVariable("POSTGRES_PASSWORD");
 
-var connectionString = $"postgresql://{dbUser}:{dbPassword}@{dbHost}:{dbPort}/{dbName}?sslmode=require";
+var connectionString = $"Host={dbHost};Port={dbPort};Database={dbName};Username=\"{dbUser}\";Password={dbPassword};SSL Mode=Require;Trust Server Certificate=true";
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString).UseSnakeCaseNamingConvention());
