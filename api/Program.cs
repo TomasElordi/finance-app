@@ -28,7 +28,7 @@ var dbPassword = Environment.GetEnvironmentVariable("POSTGRES_PASSWORD");
 var connectionString = $"Host={dbHost};Database={dbName};Username={dbUser};Password={dbPassword}";
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")).UseSnakeCaseNamingConvention());;
+    options.UseNpgsql(connectionString).UseSnakeCaseNamingConvention());
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
