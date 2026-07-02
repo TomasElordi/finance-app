@@ -9,6 +9,7 @@ using Serilog;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddAWSLambdaHosting(LambdaEventSource.HttpApi);
 
 // Add services to the container.
 builder.Services.AddScoped<IJwtService, JwtService>();
@@ -27,7 +28,7 @@ var dbName = Environment.GetEnvironmentVariable("POSTGRES_DB");
 var dbUser = Environment.GetEnvironmentVariable("POSTGRES_USER");
 var dbPassword = Environment.GetEnvironmentVariable("POSTGRES_PASSWORD");
 
-var connectionString = $"Host={dbHost};Port={dbPort};Database={dbName};Username=\"{dbUser}\";Password={dbPassword};SSL Mode=Require;Trust Server Certificate=true";
+var connectionString = $"Host={dbHost};Port={dbPort};Database={dbName};Username={dbUser};Password={dbPassword};SSL Mode=Require;Trust Server Certificate=true";
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString).UseSnakeCaseNamingConvention());
@@ -72,7 +73,8 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
-app.UseHttpsRedirection();
+// HTTPS handled by API Gateway in Lambda
+if (!app.Environment.IsProduction()) app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();

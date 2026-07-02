@@ -1,0 +1,12 @@
+{
+  "profile": "default",
+  "region": "us-east-1",
+  "configuration": "Release",
+  "function-runtime": "provided.al2023",
+  "msbuild-parameters": "--self-contained true -r linux-x64",
+  "function-memory-size": 512,
+  "function-timeout": 30,
+  "function-handler": "api",
+  "function-name": "finance-api",
+  "function-url-enable": true
+}

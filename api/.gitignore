@@ -57,3 +57,6 @@ TestResult.xml
 nunit-*.xml
 
 appsettings.Development.json
+
+# AWS SAM build artifacts
+.aws-sam/

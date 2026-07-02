@@ -1,0 +1,57 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+    Environment:
+      Variables:
+        POSTGRES_HOST: "aws-1-us-east-1.pooler.supabase.com"
+        POSTGRES_PORT: "5432"
+        POSTGRES_DB: postgres
+        POSTGRES_USER: !Sub "postgres.${SupabaseProjectRef}"
+        POSTGRES_PASSWORD: !Ref PostgresPassword
+        Jwt__Key: !Ref JwtKey
+        Jwt__Issuer: !Ref JwtIssuer
+        Jwt__Audience: !Ref JwtAudience
+        ASPNETCORE_ENVIRONMENT: Production
+        DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: "1"
+
+Parameters:
+  SupabaseProjectRef:
+    Type: String
+    Description: "El ID de tu proyecto Supabase (lo encontras en Settings → General)"
+  PostgresPassword:
+    Type: String
+    NoEcho: true
+    Description: "Settings → Database → Database password"
+  JwtKey:
+    Type: String
+    NoEcho: true
+  JwtIssuer:
+    Type: String
+  JwtAudience:
+    Type: String
+
+Resources:
+  FinanceApi:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: bootstrap
+      Runtime: provided.al2023
+      CodeUri: ./
+      Events:
+        ProxyResource:
+          Type: HttpApi
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+        RootResource:
+          Type: HttpApi
+          Properties:
+            Path: /
+            Method: ANY
+    Metadata:
+      BuildMethod: makefile
+

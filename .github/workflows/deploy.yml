@@ -3,38 +3,40 @@ name: Deploy API
 on:
   push:
     branches: [main]
+    paths:
+      - "api/**"
+      - ".github/workflows/deploy.yml"
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build Docker image
-        run: docker build -t api .
-
-      - name: Save Docker image
-        run: docker save api | gzip > api.tar.gz
-
-      - name: Copy image to server
-        uses: appleboy/scp-action@v0.1.7
+      - uses: actions/setup-dotnet@v4
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          source: api.tar.gz
-          target: /home/opc
+          dotnet-version: "10.0.x"
 
-      - name: Deploy on server
-        uses: appleboy/ssh-action@v1.0.3
+      - uses: aws-actions/setup-sam@v2
+
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          script: |
-            docker load < /home/opc/api.tar.gz
-            docker stop api || true
-            docker rm api || true
-            docker run -d --name api --restart always -p 8080:8080 \
-              --env-file /home/opc/.env \
-              api
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: sam build
+        run: sam build
+
+      - name: sam deploy
+        env:
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          JWT_KEY: ${{ secrets.JWT_KEY }}
+        run: |
+          sam deploy \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides "SupabaseProjectRef=lvkfyupzdkjxrisgapti JwtIssuer=finance-api JwtAudience=finance-app PostgresPassword=${POSTGRES_PASSWORD} JwtKey=${JWT_KEY}"
