@@ -81,6 +81,34 @@ public class EntryController(ILogger<EntryController> logger, IEntryService entr
         }
     }
 
+    [HttpPost("close-month")]
+    [ProducesResponseType(typeof(ApiResponse<EntryResponseDto>), StatusCodes.Status201Created)]
+    public async Task<IActionResult> CloseMonth()
+    {
+        try
+        {
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+            logger.LogInformation("POST Close Month by User: {User}", userId);
+            var entry = await entryService.CreateClosingEntryAsync(userId);
+            return Created($"/api/entry/{entry.Id}", ApiResponse<EntryResponseDto>.Ok(entry));
+        }
+        catch (ValidationException ex)
+        {
+            logger.LogInformation(ex.Message);
+            return BadRequest(ApiResponse<EntryResponseDto>.Fail(ex.Message));
+        }
+        catch (ConflictException ex)
+        {
+            logger.LogWarning(ex.Message);
+            return Conflict(ApiResponse<EntryResponseDto>.Fail(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            logger.LogInformation(ex, "Internal Server Error on POST Close Month.");
+            return StatusCode(500, ApiResponse<EntryResponseDto>.Fail("Internal Server Error"));
+        }
+    }
+
     [HttpPut("{id}")]
     [ProducesResponseType(typeof(ApiResponse<EntryResponseDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Put([FromRoute] Guid Id, [FromBody] PutEntryRequestDto dto)

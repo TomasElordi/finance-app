@@ -9,4 +9,5 @@ public interface IEntryService
     Task<EntryResponseDto> CreateEntryAsync(Guid userId, PostEntryRequestDto dto);
     Task<EntryResponseDto?> UpdateEntryAsync(Guid userId, Guid entryId, PutEntryRequestDto dto);
     Task<bool> DeleteEntryAsync(Guid userId, Guid entryId);
+    Task<EntryResponseDto> CreateClosingEntryAsync(Guid userId);
 }

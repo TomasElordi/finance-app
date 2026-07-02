@@ -11,6 +11,7 @@ namespace api.Services;
 public class EntryService(AppDbContext db) : IEntryService
 {
     private static readonly HashSet<NatureType> DebitNormalNatures = [NatureType.Asset, NatureType.Expense];
+    private const string RetainedEarningsAccountName = "Resultados Anteriores";
 
     private async Task ApplyBalanceDeltasAsync(IEnumerable<EntryLine> lines, bool reverse = false)
     {
@@ -198,5 +199,75 @@ public class EntryService(AppDbContext db) : IEntryService
         }
 
         return true;
+    }
+
+    public async Task<EntryResponseDto> CreateClosingEntryAsync(Guid userId)
+    {
+        var resultAccounts = await db.Accounts
+            .Where(a => a.UserId == userId && (a.Nature == NatureType.Income || a.Nature == NatureType.Expense) && a.Balance != 0)
+            .ToListAsync();
+
+        if (resultAccounts.Count == 0)
+            throw new ValidationException("No hay resultados positivos o negativos para cerrar.");
+
+        var retainedEarnings = await db.Accounts
+            .Where(a => a.UserId == userId && a.Nature == NatureType.Equity && a.Name == RetainedEarningsAccountName)
+            .FirstOrDefaultAsync();
+
+        if (retainedEarnings == null)
+        {
+            retainedEarnings = new Account { Id = Guid.NewGuid(), UserId = userId, Name = RetainedEarningsAccountName, Nature = NatureType.Equity, Balance = 0 };
+            db.Accounts.Add(retainedEarnings);
+            await db.SaveChangesAsync();
+        }
+
+        var previousMonthEnd = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddDays(-1);
+
+        var entry = new Entry
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Title = $"Cierre de resultados {previousMonthEnd:MM/yyyy}",
+            Description = "Cierre automático de cuentas de Resultado Positivo y Negativo a Resultados Anteriores.",
+            Date = previousMonthEnd,
+        };
+
+        decimal netResult = 0;
+        foreach (var account in resultAccounts)
+        {
+            bool isDebitNormal = DebitNormalNatures.Contains(account.Nature);
+            var closingType = isDebitNormal == account.Balance > 0 ? EntryLineType.Credit : EntryLineType.Debit;
+
+            entry.EntryLines.Add(new EntryLine { Id = Guid.NewGuid(), AccountId = account.Id, Amount = Math.Abs(account.Balance), Type = closingType, EntryId = entry.Id });
+
+            netResult += account.Nature == NatureType.Income ? account.Balance : -account.Balance;
+        }
+
+        if (netResult != 0)
+        {
+            var retainedEarningsType = netResult > 0 ? EntryLineType.Credit : EntryLineType.Debit;
+            entry.EntryLines.Add(new EntryLine { Id = Guid.NewGuid(), AccountId = retainedEarnings.Id, Amount = Math.Abs(netResult), Type = retainedEarningsType, EntryId = entry.Id });
+        }
+
+        await using var tx = await db.Database.BeginTransactionAsync();
+        try
+        {
+            await ApplyBalanceDeltasAsync(entry.EntryLines);
+            db.Entries.Add(entry);
+            await db.SaveChangesAsync();
+            await tx.CommitAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            await tx.RollbackAsync();
+            throw new ConflictException("Account balance was modified concurrently. Please retry.");
+        }
+        catch
+        {
+            await tx.RollbackAsync();
+            throw;
+        }
+
+        return new EntryResponseDto { Id = entry.Id, Date = entry.Date, Title = entry.Title, Description = entry.Description, EntryLines = entry.EntryLines.Adapt<List<EntryLineResponseDto>>() };
     }
 }
