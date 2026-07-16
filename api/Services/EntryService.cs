@@ -105,6 +105,85 @@ public class EntryService(AppDbContext db) : IEntryService
         return new EntryResponseDto { Id = entry.Id, Date = entry.Date, Title = entry.Title, Description = entry.Description, EntryLines = entry.EntryLines.Adapt<List<EntryLineResponseDto>>() };
     }
 
+    public async Task<List<EntryResponseDto>> CreateEntriesAsync(Guid userId, ICollection<PostEntryRequestDto> dtos)
+    {
+        if (!dtos.Any())
+            throw new ValidationException("Debe incluir al menos un asiento.");
+
+        var accountIds = dtos.SelectMany(d => d.EntryLines.Select(l => l.AccountId)).Distinct().ToList();
+        var validAccountIds = (await db.Accounts
+            .Where(a => a.UserId == userId && accountIds.Contains(a.Id))
+            .Select(a => a.Id)
+            .ToListAsync())
+            .ToHashSet();
+
+        var entries = new List<Entry>();
+        var position = 0;
+        foreach (var dto in dtos)
+        {
+            position++;
+
+            if (!dto.EntryLines.Any())
+                throw new ValidationException($"El asiento en la posición {position} debe tener al menos una línea.");
+
+            var entry = new Entry
+            {
+                Id = Guid.NewGuid(),
+                Date = DateTime.SpecifyKind(dto.Date.UtcDateTime, DateTimeKind.Utc),
+                Title = dto.Title,
+                UserId = userId,
+                Description = dto.Description
+            };
+
+            decimal sum = 0;
+            foreach (var lineDto in dto.EntryLines)
+            {
+                if (!validAccountIds.Contains(lineDto.AccountId))
+                    throw new ValidationException($"El asiento en la posición {position} hace referencia a una cuenta inválida.");
+
+                if (lineDto.Amount <= 0)
+                    throw new ValidationException($"El asiento en la posición {position} tiene un monto inválido.");
+
+                var line = new EntryLine { Id = Guid.NewGuid(), AccountId = lineDto.AccountId, Amount = lineDto.Amount, Type = lineDto.Type, EntryId = entry.Id };
+                sum += lineDto.Type == EntryLineType.Credit ? lineDto.Amount : -lineDto.Amount;
+                entry.EntryLines.Add(line);
+            }
+
+            if (sum != 0)
+                throw new ValidationException($"El asiento en la posición {position} está desbalanceado. Verificá los montos de débito y crédito.");
+
+            entries.Add(entry);
+        }
+
+        await using var tx = await db.Database.BeginTransactionAsync();
+        try
+        {
+            await ApplyBalanceDeltasAsync(entries.SelectMany(e => e.EntryLines));
+            db.Entries.AddRange(entries);
+            await db.SaveChangesAsync();
+            await tx.CommitAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            await tx.RollbackAsync();
+            throw new ConflictException("Account balance was modified concurrently. Please retry.");
+        }
+        catch
+        {
+            await tx.RollbackAsync();
+            throw;
+        }
+
+        return entries.Select(entry => new EntryResponseDto
+        {
+            Id = entry.Id,
+            Date = entry.Date,
+            Title = entry.Title,
+            Description = entry.Description,
+            EntryLines = entry.EntryLines.Adapt<List<EntryLineResponseDto>>()
+        }).ToList();
+    }
+
     public async Task<EntryResponseDto?> UpdateEntryAsync(Guid userId, Guid entryId, PutEntryRequestDto dto)
     {
         var entry = await db.Entries

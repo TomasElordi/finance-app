@@ -81,6 +81,34 @@ public class EntryController(ILogger<EntryController> logger, IEntryService entr
         }
     }
 
+    [HttpPost("bulk")]
+    [ProducesResponseType(typeof(ApiResponse<List<EntryResponseDto>>), StatusCodes.Status201Created)]
+    public async Task<IActionResult> PostBulk([FromBody] PostBulkEntryRequestDto dto)
+    {
+        try
+        {
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+            logger.LogInformation("POST Bulk Entries by User: {User}. Count: {Count}", userId, dto.Entries.Count);
+            var entries = await entryService.CreateEntriesAsync(userId, dto.Entries);
+            return Created("/api/entry", ApiResponse<List<EntryResponseDto>>.Ok(entries));
+        }
+        catch (ValidationException ex)
+        {
+            logger.LogInformation(ex.Message);
+            return BadRequest(ApiResponse<List<EntryResponseDto>>.Fail(ex.Message));
+        }
+        catch (ConflictException ex)
+        {
+            logger.LogWarning(ex.Message);
+            return Conflict(ApiResponse<List<EntryResponseDto>>.Fail(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            logger.LogInformation(ex, "Internal Server Error on POST Bulk Entries. Request: {@Request}", dto);
+            return StatusCode(500, ApiResponse<List<EntryResponseDto>>.Fail("Internal Server Error"));
+        }
+    }
+
     [HttpPost("close-month")]
     [ProducesResponseType(typeof(ApiResponse<EntryResponseDto>), StatusCodes.Status201Created)]
     public async Task<IActionResult> CloseMonth()

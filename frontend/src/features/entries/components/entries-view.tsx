@@ -1,6 +1,7 @@
 import { Entry } from "@/src/features/entries/types/entry";
 import { Account } from "@/src/features/accounts/types/account";
 import CreateEntrySheet from "./create-entry-sheet";
+import BulkCreateEntriesSheet from "./bulk-create-entries-sheet";
 import CloseMonthButton from "./close-month-button";
 import EntriesList from "./entries-list";
 import { AccountProvider } from "../context/account-context";
@@ -19,6 +20,7 @@ export default function EntriesView({ entries, accounts }: EntriesViewProps) {
           <h1 className="text-2xl font-semibold">Asientos</h1>
           <div className="flex items-center gap-2">
             <CloseMonthButton />
+            <BulkCreateEntriesSheet />
             <CreateEntrySheet />
           </div>
         </div>

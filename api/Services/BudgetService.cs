@@ -136,4 +136,28 @@ public class BudgetService(AppDbContext db) : IBudgetService
             };
         }).ToList();
     }
+
+    public async Task<List<BudgetResponseDto>> ReplicatePreviousMonthAsync(Guid userId, int year, int month)
+    {
+        var previous = new DateTime(year, month, 1).AddMonths(-1);
+
+        var previousBudgets = await db.Budgets
+            .Where(b => b.UserId == userId && b.Year == previous.Year && b.Month == previous.Month)
+            .ToListAsync();
+
+        if (previousBudgets.Count == 0)
+            throw new ValidationException("No hay presupuesto en el mes anterior para replicar.");
+
+        var currentHasBudgets = await db.Budgets
+            .AnyAsync(b => b.UserId == userId && b.Year == year && b.Month == month);
+
+        if (currentHasBudgets)
+            throw new ValidationException("Ya existe un presupuesto cargado para este período.");
+
+        var items = previousBudgets
+            .Select(b => new UpsertBudgetRequestDto { AccountId = b.AccountId, Year = year, Month = month, Amount = b.Amount })
+            .ToList();
+
+        return await UpsertBudgetsAsync(userId, items);
+    }
 }

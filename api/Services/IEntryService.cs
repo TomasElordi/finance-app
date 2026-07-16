@@ -7,6 +7,7 @@ public interface IEntryService
     Task<List<EntryResponseDto>> GetEntriesAsync(Guid userId);
     Task<EntryResponseDto?> GetEntryAsync(Guid userId, Guid entryId);
     Task<EntryResponseDto> CreateEntryAsync(Guid userId, PostEntryRequestDto dto);
+    Task<List<EntryResponseDto>> CreateEntriesAsync(Guid userId, ICollection<PostEntryRequestDto> dtos);
     Task<EntryResponseDto?> UpdateEntryAsync(Guid userId, Guid entryId, PutEntryRequestDto dto);
     Task<bool> DeleteEntryAsync(Guid userId, Guid entryId);
     Task<EntryResponseDto> CreateClosingEntryAsync(Guid userId);

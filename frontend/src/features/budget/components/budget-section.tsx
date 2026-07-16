@@ -9,10 +9,15 @@ interface BudgetSectionProps {
 }
 
 export default async function BudgetSection({ year, month }: BudgetSectionProps) {
-  const [accounts, budgets, summary] = await Promise.all([
+  const previousDate = new Date(year, month - 2, 1);
+  const previousYear = previousDate.getFullYear();
+  const previousMonth = previousDate.getMonth() + 1;
+
+  const [accounts, budgets, summary, previousBudgets] = await Promise.all([
     getAccounts(),
     getBudgets(year, month),
     getPeriodSummary(year, month),
+    getBudgets(previousYear, previousMonth),
   ]);
 
   return (
@@ -22,6 +27,7 @@ export default async function BudgetSection({ year, month }: BudgetSectionProps)
       summary={summary}
       year={year}
       month={month}
+      hasPreviousBudgets={previousBudgets.length > 0}
     />
   );
 }

@@ -4,6 +4,7 @@ import { BudgetSummaryItem } from "../types/period-summary";
 import PeriodSelector from "./period-selector";
 import BudgetSheet from "./budget-sheet";
 import BudgetCharts from "./budget-charts";
+import ReplicateBudgetButton from "./replicate-budget-button";
 import { Target } from "lucide-react";
 
 interface BudgetViewProps {
@@ -12,10 +13,19 @@ interface BudgetViewProps {
   summary: BudgetSummaryItem[];
   year: number;
   month: number;
+  hasPreviousBudgets: boolean;
 }
 
-export default function BudgetView({ accounts, budgets, summary, year, month }: BudgetViewProps) {
+export default function BudgetView({
+  accounts,
+  budgets,
+  summary,
+  year,
+  month,
+  hasPreviousBudgets,
+}: BudgetViewProps) {
   const hasExistingBudgets = budgets.length > 0;
+  const canReplicate = !hasExistingBudgets && hasPreviousBudgets;
 
   return (
     <div className="p-6 flex flex-col gap-6">
@@ -46,6 +56,7 @@ export default function BudgetView({ accounts, budgets, summary, year, month }: 
               Definí cuánto querés gastar en cada categoría y seguí tu progreso.
             </p>
           </div>
+          {canReplicate && <ReplicateBudgetButton year={year} month={month} />}
         </div>
       )}
     </div>

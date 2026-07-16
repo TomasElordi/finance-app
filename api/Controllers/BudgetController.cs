@@ -77,6 +77,29 @@ public class BudgetController(ILogger<BudgetController> logger, IBudgetService b
         }
     }
 
+    [HttpPost("replicate-previous")]
+    [ProducesResponseType(typeof(ApiResponse<List<BudgetResponseDto>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ReplicatePrevious([FromQuery] int year, [FromQuery] int month)
+    {
+        try
+        {
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+            logger.LogInformation("POST Budget replicate-previous by User: {User} for {Year}/{Month}.", userId, year, month);
+            var budgets = await budgetService.ReplicatePreviousMonthAsync(userId, year, month);
+            return Ok(ApiResponse<List<BudgetResponseDto>>.Ok(budgets));
+        }
+        catch (ValidationException ex)
+        {
+            logger.LogInformation(ex, "Validation error on POST Budget replicate-previous");
+            return BadRequest(ApiResponse<List<BudgetResponseDto>>.Fail(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Internal Server Error on POST Budget replicate-previous");
+            return StatusCode(500, ApiResponse<List<BudgetResponseDto>>.Fail("Internal Server Error"));
+        }
+    }
+
     [HttpGet("summary")]
     [ProducesResponseType(typeof(ApiResponse<List<BudgetSummaryItemDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetSummary([FromQuery] int year, [FromQuery] int month)
