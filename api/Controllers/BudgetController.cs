@@ -117,4 +117,22 @@ public class BudgetController(ILogger<BudgetController> logger, IBudgetService b
             return StatusCode(500, ApiResponse<List<BudgetSummaryItemDto>>.Fail("Internal Server Error"));
         }
     }
+
+    [HttpGet("overview")]
+    [ProducesResponseType(typeof(ApiResponse<BudgetOverviewDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetOverview([FromQuery] int year, [FromQuery] int month)
+    {
+        try
+        {
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+            logger.LogInformation("GET Budget overview by User: {User} for {Year}/{Month}.", userId, year, month);
+            var overview = await budgetService.GetPeriodOverviewAsync(userId, year, month);
+            return Ok(ApiResponse<BudgetOverviewDto>.Ok(overview));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Internal Server Error on GET Budget overview");
+            return StatusCode(500, ApiResponse<BudgetOverviewDto>.Fail("Internal Server Error"));
+        }
+    }
 }

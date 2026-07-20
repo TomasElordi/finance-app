@@ -137,6 +137,43 @@ public class BudgetService(AppDbContext db) : IBudgetService
         }).ToList();
     }
 
+    public async Task<BudgetOverviewDto> GetPeriodOverviewAsync(Guid userId, int year, int month)
+    {
+        var periodStart = new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var periodEnd = periodStart.AddMonths(1);
+
+        var totalBudgeted = await db.Budgets
+            .Where(b => b.UserId == userId && b.Year == year && b.Month == month)
+            .SumAsync(b => b.Amount);
+
+        // Sum of Debit entry_lines for Expense accounts in the period (Debit increases Expense accounts)
+        var totalActual = await db.EntryLines
+            .Where(el =>
+                el.Entry.UserId == userId &&
+                el.Account.Nature == NatureType.Expense &&
+                el.Type == EntryLineType.Debit &&
+                el.Entry.Date >= periodStart &&
+                el.Entry.Date < periodEnd)
+            .SumAsync(el => el.Amount);
+
+        // Sum of Credit entry_lines for Income accounts in the period (Credit increases Income accounts)
+        var totalIncome = await db.EntryLines
+            .Where(el =>
+                el.Entry.UserId == userId &&
+                el.Account.Nature == NatureType.Income &&
+                el.Type == EntryLineType.Credit &&
+                el.Entry.Date >= periodStart &&
+                el.Entry.Date < periodEnd)
+            .SumAsync(el => el.Amount);
+
+        return new BudgetOverviewDto
+        {
+            TotalBudgeted = totalBudgeted,
+            TotalActual = totalActual,
+            TotalIncome = totalIncome
+        };
+    }
+
     public async Task<List<BudgetResponseDto>> ReplicatePreviousMonthAsync(Guid userId, int year, int month)
     {
         var previous = new DateTime(year, month, 1).AddMonths(-1);

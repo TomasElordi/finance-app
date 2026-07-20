@@ -1,9 +1,11 @@
 import { Account } from "@/src/features/accounts/types/account";
 import { Budget } from "../types/budget";
 import { BudgetSummaryItem } from "../types/period-summary";
+import { BudgetOverview } from "../types/period-overview";
 import PeriodSelector from "./period-selector";
 import BudgetSheet from "./budget-sheet";
 import BudgetCharts from "./budget-charts";
+import BudgetOverviewCards from "./budget-overview-cards";
 import ReplicateBudgetButton from "./replicate-budget-button";
 import { Target } from "lucide-react";
 
@@ -11,6 +13,7 @@ interface BudgetViewProps {
   accounts: Account[];
   budgets: Budget[];
   summary: BudgetSummaryItem[];
+  overview: BudgetOverview;
   year: number;
   month: number;
   hasPreviousBudgets: boolean;
@@ -20,6 +23,7 @@ export default function BudgetView({
   accounts,
   budgets,
   summary,
+  overview,
   year,
   month,
   hasPreviousBudgets,
@@ -42,6 +46,8 @@ export default function BudgetView({
           />
         </div>
       </div>
+
+      <BudgetOverviewCards {...overview} />
 
       {hasExistingBudgets ? (
         <BudgetCharts items={summary} />
