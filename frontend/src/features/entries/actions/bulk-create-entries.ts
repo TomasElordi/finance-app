@@ -40,6 +40,7 @@ export async function bulkCreateEntriesAction(
 
     revalidateTag("entries", {});
     revalidateTag("accounts", {});
+    revalidateTag("reports", {});
     refresh();
     return { status: "success" };
   } catch {
