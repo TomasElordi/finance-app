@@ -4,6 +4,7 @@ using Scalar.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using api.Mcp;
 using api.Services;
 using Serilog;
 using System.Text.Json.Serialization;
@@ -19,6 +20,11 @@ builder.Services.AddScoped<IEntryService, EntryService>();
 builder.Services.AddScoped<IBudgetService, BudgetService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddControllers();
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddMcpServer()
+    .WithHttpTransport()
+    .WithTools<EntryTools>();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -81,5 +87,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapMcp("/mcp").RequireAuthorization();
 
 app.Run();
