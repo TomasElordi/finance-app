@@ -1,4 +1,4 @@
-import { Entry } from "@/src/features/entries/types/entry";
+import { PaginatedEntries } from "@/src/features/entries/types/entry";
 import { Account } from "@/src/features/accounts/types/account";
 import CreateEntrySheet from "./create-entry-sheet";
 import BulkCreateEntriesSheet from "./bulk-create-entries-sheet";
@@ -6,9 +6,10 @@ import CloseMonthButton from "./close-month-button";
 import EntriesList from "./entries-list";
 import { AccountProvider } from "../context/account-context";
 import EntriesEmptyState from "./entries-empty-state";
+import EntriesPagination from "./entries-pagination";
 
 interface EntriesViewProps {
-  entries: Entry[];
+  entries: PaginatedEntries;
   accounts: Account[];
 }
 
@@ -25,10 +26,17 @@ export default function EntriesView({ entries, accounts }: EntriesViewProps) {
           </div>
         </div>
 
-        {entries.length === 0 ? (
+        {entries.totalCount === 0 ? (
           <EntriesEmptyState />
         ) : (
-          <EntriesList entries={entries} />
+          <>
+            <EntriesList entries={entries.entries} />
+            <EntriesPagination
+              page={entries.page}
+              totalPages={entries.totalPages}
+              totalCount={entries.totalCount}
+            />
+          </>
         )}
       </div>
     </AccountProvider>

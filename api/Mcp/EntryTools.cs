@@ -20,9 +20,11 @@ public class EntryTools(IEntryService entryService, IAccountService accountServi
         => accountService.GetAccountsAsync(CurrentUserId);
 
     [McpServerTool(Name = "list_entries")]
-    [Description("Lists journal entries (asientos) for the current user, most recent first, with their lines.")]
-    public Task<List<EntryResponseDto>> ListEntries()
-        => entryService.GetEntriesAsync(CurrentUserId);
+    [Description("Lists journal entries (asientos) for the current user, most recent first, with their lines. Results are paginated; use totalPages to know if there are more.")]
+    public Task<GetEntriesResponseDto> ListEntries(
+        [Description("Page number, starting at 1")] int page = 1,
+        [Description("Entries per page (1-100)")] int pageSize = 20)
+        => entryService.GetEntriesAsync(CurrentUserId, Math.Max(page, 1), Math.Clamp(pageSize, 1, 100));
 
     [McpServerTool(Name = "create_entry")]
     [Description("Creates a new journal entry (asiento contable). The entry lines must balance: the sum of Debit amounts must equal the sum of Credit amounts.")]

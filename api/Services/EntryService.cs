@@ -29,13 +29,27 @@ public class EntryService(AppDbContext db) : IEntryService
         }
     }
 
-    public async Task<List<EntryResponseDto>> GetEntriesAsync(Guid userId)
+    public async Task<GetEntriesResponseDto> GetEntriesAsync(Guid userId, int page, int pageSize)
     {
-        var entries = await db.Entries
-            .Where(e => e.UserId == userId)
+        var query = db.Entries.Where(e => e.UserId == userId);
+
+        var totalCount = await query.CountAsync();
+
+        var entries = await query
+            .OrderByDescending(e => e.Date)
+            .ThenByDescending(e => e.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Include(e => e.EntryLines)
             .ToListAsync();
-        return entries.Adapt<List<EntryResponseDto>>();
+
+        return new GetEntriesResponseDto
+        {
+            Entries = entries.Adapt<List<EntryResponseDto>>(),
+            Page = page,
+            PageSize = pageSize,
+            TotalCount = totalCount
+        };
     }
 
     public async Task<EntryResponseDto?> GetEntryAsync(Guid userId, Guid entryId)

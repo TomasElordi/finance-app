@@ -14,14 +14,16 @@ public class EntryController(ILogger<EntryController> logger, IEntryService entr
 {
     [HttpGet]
     [ProducesResponseType(typeof(ApiResponse<GetEntriesResponseDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> Get()
+    public async Task<IActionResult> Get([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
         try
         {
+            page = Math.Max(page, 1);
+            pageSize = Math.Clamp(pageSize, 1, 100);
             var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
-            logger.LogInformation("GET Entries by User: {User}", userId);
-            var entries = await entryService.GetEntriesAsync(userId);
-            return Ok(ApiResponse<GetEntriesResponseDto>.Ok(new GetEntriesResponseDto { Entries = entries }));
+            logger.LogInformation("GET Entries by User: {User}. Page: {Page}, PageSize: {PageSize}", userId, page, pageSize);
+            var entries = await entryService.GetEntriesAsync(userId, page, pageSize);
+            return Ok(ApiResponse<GetEntriesResponseDto>.Ok(entries));
         }
         catch (Exception ex)
         {

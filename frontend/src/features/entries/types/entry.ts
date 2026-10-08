@@ -12,3 +12,11 @@ export interface Entry {
   date: string;
   entryLines: EntryLine[];
 }
+
+export interface PaginatedEntries {
+  entries: Entry[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+}
