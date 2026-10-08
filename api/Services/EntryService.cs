@@ -296,33 +296,49 @@ public class EntryService(AppDbContext db) : IEntryService
 
     public async Task<EntryResponseDto> CreateClosingEntryAsync(Guid userId)
     {
-        var resultAccounts = await db.Accounts
-            .Where(a => a.UserId == userId && (a.Nature == NatureType.Income || a.Nature == NatureType.Expense) && a.Balance != 0)
+        // Closes the previous month: everything up to its last day
+        var periodEnd = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var periodStart = periodEnd.AddMonths(-1);
+        var closingDate = periodEnd.AddDays(-1);
+
+        var alreadyClosed = await db.Entries
+            .AnyAsync(e => e.UserId == userId && e.IsClosing && e.Date >= periodStart && e.Date < periodEnd);
+        if (alreadyClosed)
+            throw new ValidationException($"El período {closingDate:MM/yyyy} ya está cerrado.");
+
+        // Result account balances as of the end of the period, not the current balance,
+        // so movements dated after the period aren't swept into this closing
+        var totals = await db.EntryLines
+            .Where(el =>
+                el.Entry.UserId == userId &&
+                el.Entry.Date < periodEnd &&
+                (el.Account.Nature == NatureType.Income || el.Account.Nature == NatureType.Expense))
+            .GroupBy(el => new { el.AccountId, el.Account.Nature, el.Type })
+            .Select(g => new { g.Key.AccountId, g.Key.Nature, g.Key.Type, Total = g.Sum(el => el.Amount) })
             .ToListAsync();
+
+        var resultAccounts = totals
+            .GroupBy(t => new { t.AccountId, t.Nature })
+            .Select(g =>
+            {
+                bool isDebitNormal = DebitNormalNatures.Contains(g.Key.Nature);
+                var balance = g.Sum(t => isDebitNormal == (t.Type == EntryLineType.Debit) ? t.Total : -t.Total);
+                return new { g.Key.AccountId, g.Key.Nature, Balance = balance };
+            })
+            .Where(a => a.Balance != 0)
+            .ToList();
 
         if (resultAccounts.Count == 0)
             throw new ValidationException("No hay resultados positivos o negativos para cerrar.");
-
-        var retainedEarnings = await db.Accounts
-            .Where(a => a.UserId == userId && a.Nature == NatureType.Equity && a.Name == RetainedEarningsAccountName)
-            .FirstOrDefaultAsync();
-
-        if (retainedEarnings == null)
-        {
-            retainedEarnings = new Account { Id = Guid.NewGuid(), UserId = userId, Name = RetainedEarningsAccountName, Nature = NatureType.Equity, Balance = 0 };
-            db.Accounts.Add(retainedEarnings);
-            await db.SaveChangesAsync();
-        }
-
-        var previousMonthEnd = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddDays(-1);
 
         var entry = new Entry
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            Title = $"Cierre de resultados {previousMonthEnd:MM/yyyy}",
+            Title = $"Cierre de resultados {closingDate:MM/yyyy}",
             Description = "Cierre automático de cuentas de Resultado Positivo y Negativo a Resultados Anteriores.",
-            Date = previousMonthEnd,
+            Date = closingDate,
+            IsClosing = true,
         };
 
         decimal netResult = 0;
@@ -331,20 +347,31 @@ public class EntryService(AppDbContext db) : IEntryService
             bool isDebitNormal = DebitNormalNatures.Contains(account.Nature);
             var closingType = isDebitNormal == account.Balance > 0 ? EntryLineType.Credit : EntryLineType.Debit;
 
-            entry.EntryLines.Add(new EntryLine { Id = Guid.NewGuid(), AccountId = account.Id, Amount = Math.Abs(account.Balance), Type = closingType, EntryId = entry.Id });
+            entry.EntryLines.Add(new EntryLine { Id = Guid.NewGuid(), AccountId = account.AccountId, Amount = Math.Abs(account.Balance), Type = closingType, EntryId = entry.Id });
 
             netResult += account.Nature == NatureType.Income ? account.Balance : -account.Balance;
-        }
-
-        if (netResult != 0)
-        {
-            var retainedEarningsType = netResult > 0 ? EntryLineType.Credit : EntryLineType.Debit;
-            entry.EntryLines.Add(new EntryLine { Id = Guid.NewGuid(), AccountId = retainedEarnings.Id, Amount = Math.Abs(netResult), Type = retainedEarningsType, EntryId = entry.Id });
         }
 
         await using var tx = await db.Database.BeginTransactionAsync();
         try
         {
+            if (netResult != 0)
+            {
+                var retainedEarnings = await db.Accounts
+                    .Where(a => a.UserId == userId && a.Nature == NatureType.Equity && a.Name == RetainedEarningsAccountName)
+                    .FirstOrDefaultAsync();
+
+                if (retainedEarnings == null)
+                {
+                    retainedEarnings = new Account { Id = Guid.NewGuid(), UserId = userId, Name = RetainedEarningsAccountName, Nature = NatureType.Equity, Balance = 0 };
+                    db.Accounts.Add(retainedEarnings);
+                    await db.SaveChangesAsync();
+                }
+
+                var retainedEarningsType = netResult > 0 ? EntryLineType.Credit : EntryLineType.Debit;
+                entry.EntryLines.Add(new EntryLine { Id = Guid.NewGuid(), AccountId = retainedEarnings.Id, Amount = Math.Abs(netResult), Type = retainedEarningsType, EntryId = entry.Id });
+            }
+
             await ApplyBalanceDeltasAsync(entry.EntryLines);
             db.Entries.Add(entry);
             await db.SaveChangesAsync();
