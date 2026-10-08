@@ -4,6 +4,7 @@ import { serverFetch } from "@/src/shared/lib/api";
 import { ApiResponse } from "@/src/shared/types/api";
 import { refresh } from "next/cache";
 import { revalidateEntryDependents } from "../utils/revalidate-entry-dependents";
+import { toEntryDate } from "../utils/entry-date";
 import { CreateEntrySchema } from "@/src/features/entries/types/create-entry-schema";
 import { CreateEntryActionState } from "@/src/features/entries/types/create-entry-action-state";
 import { Entry } from "@/src/features/entries/types/entry";
@@ -43,19 +44,10 @@ export async function createEntryAction(
       },
     };
   }
-  // En raw, agregar:
-
-  // Donde construís la date (reemplazá la línea actual):
-  const offset = Number(formData.get("timezoneOffset") ?? 0); // minutos, ej: 180 para -03:00
-  const sign = offset <= 0 ? "+" : "-";
-  const absOffset = Math.abs(offset);
-  const hh = String(Math.floor(absOffset / 60)).padStart(2, "0");
-  const mm = String(absOffset % 60).padStart(2, "0");
-  const date = `${parsed.data.date}T00:00:00.000${sign}${hh}:${mm}`;
   try {
     const body = {
       ...parsed.data,
-      date: date,
+      date: toEntryDate(parsed.data.date),
     };
 
     const response = await serverFetch<ApiResponse<Entry>>("/entry", {

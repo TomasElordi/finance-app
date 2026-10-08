@@ -31,12 +31,7 @@ export default function CreateEntrySheet() {
   const accounts = accountContext.accounts;
   const [open, setOpen] = useState(false);
   const [resetKey, setResetKey] = useState(0);
-  const [timezoneOffset, setTimezoneOffset] = useState(0);
   const [alertConfirmOpen, setAlertConfirmOpen] = useState(false);
-  useEffect(() => {
-    setTimezoneOffset(new Date().getTimezoneOffset());
-  }, []);
-
   const [state, formAction, pending] = useActionState(
     createEntryAction,
     initialState,
@@ -49,9 +44,6 @@ export default function CreateEntrySheet() {
     }
   }, [state]);
 
-  useEffect(() => {
-    setTimezoneOffset(new Date().getTimezoneOffset());
-  }, []);
   const titleError = state.status === "error" && !!state.errors.title;
   const dateError = state.status === "error" && !!state.errors.date;
   const entryLinesError = state.status === "error" && !!state.errors.entryLines;
@@ -93,11 +85,6 @@ export default function CreateEntrySheet() {
             </SheetDescription>
           </SheetHeader>
           <form action={formAction} className="flex flex-col gap-4 p-4">
-            <input
-              type="hidden"
-              name="timezoneOffset"
-              value={timezoneOffset}
-            ></input>
             <Field data-invalid={titleError}>
               <FieldLabel htmlFor="title">Título</FieldLabel>
               <Input

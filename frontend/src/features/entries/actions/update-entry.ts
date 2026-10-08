@@ -4,6 +4,7 @@ import { serverFetch } from "@/src/shared/lib/api";
 import { ApiResponse } from "@/src/shared/types/api";
 import { refresh } from "next/cache";
 import { revalidateEntryDependents } from "../utils/revalidate-entry-dependents";
+import { toEntryDate } from "../utils/entry-date";
 import { CreateEntrySchema } from "@/src/features/entries/types/create-entry-schema";
 import { UpdateEntryActionState } from "@/src/features/entries/types/update-entry-action-state";
 import { Entry } from "@/src/features/entries/types/entry";
@@ -54,7 +55,7 @@ export async function updateEntryAction(
   try {
     const body = {
       ...parsed.data,
-      date: new Date(parsed.data.date).toISOString(),
+      date: toEntryDate(parsed.data.date),
     };
 
     const response = await serverFetch<ApiResponse<Entry>>(`/entry/${id}`, {
