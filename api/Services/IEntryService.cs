@@ -4,7 +4,7 @@ namespace api.Services;
 
 public interface IEntryService
 {
-    Task<List<EntryResponseDto>> GetEntriesAsync(Guid userId);
+    Task<GetEntriesResponseDto> GetEntriesAsync(Guid userId, int page, int pageSize);
     Task<EntryResponseDto?> GetEntryAsync(Guid userId, Guid entryId);
     Task<EntryResponseDto> CreateEntryAsync(Guid userId, PostEntryRequestDto dto);
     Task<List<EntryResponseDto>> CreateEntriesAsync(Guid userId, ICollection<PostEntryRequestDto> dtos);

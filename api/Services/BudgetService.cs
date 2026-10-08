@@ -125,7 +125,8 @@ public class BudgetService(AppDbContext db) : IBudgetService
         return budgets.Select(b =>
         {
             var actual = actuals.GetValueOrDefault(b.AccountId, 0m);
-            var percentage = b.Amount > 0 ? Math.Round(actual / b.Amount * 100, 2) : 0m;
+            // A zero budget with any spending counts as fully exceeded
+            var percentage = b.Amount > 0 ? Math.Round(actual / b.Amount * 100, 2) : (actual > 0 ? 100m : 0m);
             return new BudgetSummaryItemDto
             {
                 AccountId = b.AccountId,

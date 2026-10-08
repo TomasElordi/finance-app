@@ -3,6 +3,6 @@ import { getAccounts } from "@/src/features/accounts/data/get-accounts";
 import RecentEntries from "./recent-entries";
 
 export default async function RecentEntriesSection() {
-  const [entries, accounts] = await Promise.all([getEntries(), getAccounts()]);
+  const [{ entries }, accounts] = await Promise.all([getEntries(1, 5), getAccounts()]);
   return <RecentEntries entries={entries} accounts={accounts} />;
 }

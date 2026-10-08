@@ -49,7 +49,7 @@ export default function BudgetSheet({
     setError(null);
 
     const items = expenseAccounts
-      .filter((a) => amounts[a.id] !== "" && Number(amounts[a.id]) > 0)
+      .filter((a) => amounts[a.id] !== "" && Number(amounts[a.id]) >= 0)
       .map((a) => ({
         accountId: a.id,
         year,

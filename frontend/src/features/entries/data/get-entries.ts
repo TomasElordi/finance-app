@@ -1,25 +1,38 @@
 import { cacheTag } from "next/dist/server/use-cache/cache-tag";
 import { serverFetch } from "@/src/shared/lib/api";
 import { ApiResponse } from "@/src/shared/types/api";
-import { Entry } from "../types/entry";
+import { PaginatedEntries } from "../types/entry";
 import { session } from "@/src/shared/lib/session";
 
-async function fetchEntries(token: string): Promise<Entry[]> {
+export const ENTRIES_PAGE_SIZE = 20;
+
+function emptyPage(page: number, pageSize: number): PaginatedEntries {
+  return { entries: [], page, pageSize, totalCount: 0, totalPages: 0 };
+}
+
+async function fetchEntries(
+  token: string,
+  page: number,
+  pageSize: number,
+): Promise<PaginatedEntries> {
   "use cache";
   cacheTag("entries");
   try {
-    const response = await serverFetch<ApiResponse<{ entries: Entry[] }>>(
-      "/entry",
+    const response = await serverFetch<ApiResponse<PaginatedEntries>>(
+      `/entry?page=${page}&pageSize=${pageSize}`,
       { auth: false, headers: { Authorization: `Bearer ${token}` } },
     );
-    return response?.success ? response.data.entries : [];
+    return response?.success ? response.data : emptyPage(page, pageSize);
   } catch {
-    return [];
+    return emptyPage(page, pageSize);
   }
 }
 
-export async function getEntries(): Promise<Entry[]> {
+export async function getEntries(
+  page = 1,
+  pageSize = ENTRIES_PAGE_SIZE,
+): Promise<PaginatedEntries> {
   const token = await session.getAccessToken();
-  if (!token) return [];
-  return fetchEntries(token);
+  if (!token) return emptyPage(page, pageSize);
+  return fetchEntries(token, page, pageSize);
 }
