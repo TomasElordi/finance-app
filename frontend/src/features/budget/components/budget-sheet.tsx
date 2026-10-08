@@ -33,17 +33,29 @@ export default function BudgetSheet({
 }: BudgetSheetProps) {
   const expenseAccounts = accounts.filter((a) => a.nature === "Expense");
 
-  const initialAmounts = Object.fromEntries(
-    expenseAccounts.map((a) => {
-      const existing = budgets.find((b) => b.accountId === a.id);
-      return [a.id, existing ? String(existing.amount) : ""];
-    }),
-  );
+  function amountsFromBudgets() {
+    return Object.fromEntries(
+      expenseAccounts.map((a) => {
+        const existing = budgets.find((b) => b.accountId === a.id);
+        return [a.id, existing ? String(existing.amount) : ""];
+      }),
+    );
+  }
 
   const [open, setOpen] = useState(false);
-  const [amounts, setAmounts] = useState<Record<string, string>>(initialAmounts);
+  const [amounts, setAmounts] = useState<Record<string, string>>(amountsFromBudgets);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  // Reload from props on open: the period or its budgets may have changed
+  // (period selector, replicate) while this component stayed mounted.
+  function handleOpenChange(next: boolean) {
+    if (next) {
+      setAmounts(amountsFromBudgets());
+      setError(null);
+    }
+    setOpen(next);
+  }
 
   function handleSave() {
     setError(null);
@@ -70,7 +82,7 @@ export default function BudgetSheet({
   }
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>
         {hasExistingBudgets ? (
           <Button variant="outline" size="sm">
