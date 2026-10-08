@@ -24,6 +24,7 @@ public class ReportService(AppDbContext db) : IReportService
         var lines = await db.EntryLines
             .Where(el =>
                 el.Entry.UserId == userId &&
+                !el.Entry.IsClosing &&
                 (el.Account.Nature == NatureType.Income || el.Account.Nature == NatureType.Expense) &&
                 el.Entry.Date >= periodStart &&
                 el.Entry.Date < periodEnd)

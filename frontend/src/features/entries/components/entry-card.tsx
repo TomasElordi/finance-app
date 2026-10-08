@@ -2,13 +2,10 @@ import { Entry } from "../types/entry";
 import DeleteEntryForm from "./delete-entry-form";
 import EditEntrySheet from "./edit-entry-sheet";
 import EntryLinesList from "./entry-lines-list";
+import { formatEntryDate } from "../utils/entry-date";
 
 export default function EntryCard({ entry }: { entry: Entry }) {
-  const date = new Date(entry.date).toLocaleDateString("es-AR", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  const date = formatEntryDate(entry.date);
   return (
     <div
       key={entry.id}

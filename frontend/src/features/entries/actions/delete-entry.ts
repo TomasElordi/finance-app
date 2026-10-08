@@ -2,7 +2,8 @@
 
 import { serverFetch } from "@/src/shared/lib/api";
 import { ApiResponse } from "@/src/shared/types/api";
-import { revalidateTag, refresh } from "next/cache";
+import { refresh } from "next/cache";
+import { revalidateEntryDependents } from "../utils/revalidate-entry-dependents";
 import { ActionState } from "@/src/shared/types/action-state";
 
 export async function deleteEntryAction(
@@ -25,9 +26,7 @@ export async function deleteEntryAction(
       return { status: "error", message: response.message, errors: {} };
     }
 
-    revalidateTag("entries", {});
-    revalidateTag("accounts", {});
-    revalidateTag("reports", {});
+    revalidateEntryDependents();
     refresh();
     return { status: "success" };
   } catch (error) {

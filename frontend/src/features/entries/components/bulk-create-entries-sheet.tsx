@@ -23,7 +23,7 @@ const EXAMPLE = `[
   {
     "title": "Pago de alquiler",
     "description": "Alquiler julio",
-    "date": "2026-07-01T00:00:00-03:00",
+    "date": "2026-07-01T00:00:00Z",
     "entryLines": [
       { "accountId": "<guid-cuenta-debe>", "amount": 1000, "type": "Debit" },
       { "accountId": "<guid-cuenta-haber>", "amount": 1000, "type": "Credit" }

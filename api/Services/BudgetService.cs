@@ -116,6 +116,7 @@ public class BudgetService(AppDbContext db) : IBudgetService
                 budgetAccountIds.Contains(el.AccountId) &&
                 el.Type == EntryLineType.Debit &&
                 el.Entry.UserId == userId &&
+                !el.Entry.IsClosing &&
                 el.Entry.Date >= periodStart &&
                 el.Entry.Date < periodEnd)
             .GroupBy(el => el.AccountId)
@@ -151,6 +152,7 @@ public class BudgetService(AppDbContext db) : IBudgetService
         var totalActual = await db.EntryLines
             .Where(el =>
                 el.Entry.UserId == userId &&
+                !el.Entry.IsClosing &&
                 el.Account.Nature == NatureType.Expense &&
                 el.Type == EntryLineType.Debit &&
                 el.Entry.Date >= periodStart &&
@@ -161,6 +163,7 @@ public class BudgetService(AppDbContext db) : IBudgetService
         var totalIncome = await db.EntryLines
             .Where(el =>
                 el.Entry.UserId == userId &&
+                !el.Entry.IsClosing &&
                 el.Account.Nature == NatureType.Income &&
                 el.Type == EntryLineType.Credit &&
                 el.Entry.Date >= periodStart &&
