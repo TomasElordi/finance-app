@@ -6,6 +6,7 @@ export const PAGES = {
   ENTRIES: "/entries",
   REPORTS: "/reports",
   BUDGET: "/budget",
+  EXPENSES: "/expenses",
 };
 
 export type Page = (typeof PAGES)[keyof typeof PAGES];
@@ -16,6 +17,7 @@ export const PROTECTED_PAGES = new Set<Page>([
   PAGES.ENTRIES,
   PAGES.REPORTS,
   PAGES.BUDGET,
+  PAGES.EXPENSES,
 ]);
 
 export const AUTH_PAGES = new Set<Page>([PAGES.LOGIN, PAGES.REGISTER]);

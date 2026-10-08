@@ -111,4 +111,60 @@ public class ReportService(AppDbContext db) : IReportService
             TotalEquity = equity.Sum(l => l.Amount)
         };
     }
+
+    // Net expenses (debits minus credits, excluding closings) for the `months` months ending at year/month
+    public async Task<List<MonthlyAmountDto>> GetExpenseTrendAsync(Guid userId, int year, int month, int months, Guid? accountId)
+    {
+        var periodEnd = new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(1);
+        var periodStart = periodEnd.AddMonths(-months);
+
+        var totals = await db.EntryLines
+            .Where(el =>
+                el.Entry.UserId == userId &&
+                !el.Entry.IsClosing &&
+                el.Account.Nature == NatureType.Expense &&
+                (accountId == null || el.AccountId == accountId) &&
+                el.Entry.Date >= periodStart &&
+                el.Entry.Date < periodEnd)
+            .GroupBy(el => new { el.Entry.Date.Year, el.Entry.Date.Month, el.Type })
+            .Select(g => new { g.Key.Year, g.Key.Month, g.Key.Type, Total = g.Sum(el => el.Amount) })
+            .ToListAsync();
+
+        return Enumerable.Range(0, months)
+            .Select(i => periodStart.AddMonths(i))
+            .Select(d => new MonthlyAmountDto
+            {
+                Year = d.Year,
+                Month = d.Month,
+                Amount = NetAmount(NatureType.Expense, totals
+                    .Where(t => t.Year == d.Year && t.Month == d.Month)
+                    .Select(t => (t.Type, t.Total)))
+            })
+            .ToList();
+    }
+
+    public async Task<List<AccountMovementDto>> GetAccountMovementsAsync(Guid userId, Guid accountId, int year, int month)
+    {
+        var periodStart = new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var periodEnd = periodStart.AddMonths(1);
+
+        return await db.EntryLines
+            .Where(el =>
+                el.Entry.UserId == userId &&
+                !el.Entry.IsClosing &&
+                el.AccountId == accountId &&
+                el.Entry.Date >= periodStart &&
+                el.Entry.Date < periodEnd)
+            .OrderByDescending(el => el.Entry.Date)
+            .ThenBy(el => el.Entry.Title)
+            .Select(el => new AccountMovementDto
+            {
+                EntryId = el.EntryId,
+                EntryTitle = el.Entry.Title,
+                Date = el.Entry.Date,
+                Type = el.Type,
+                Amount = el.Amount
+            })
+            .ToListAsync();
+    }
 }
