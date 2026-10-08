@@ -46,4 +46,44 @@ public class ReportController(ILogger<ReportController> logger, IReportService r
             return StatusCode(500, ApiResponse<BalanceSheetDto>.Fail("Internal Server Error"));
         }
     }
+
+    [HttpGet("expense-trend")]
+    [ProducesResponseType(typeof(ApiResponse<List<MonthlyAmountDto>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetExpenseTrend([FromQuery] int year, [FromQuery] int month, [FromQuery] int months = 12, [FromQuery] Guid? accountId = null)
+    {
+        if (month is < 1 or > 12 || year is < 2000 or > 2100 || months is < 1 or > 36)
+            return BadRequest(ApiResponse<List<MonthlyAmountDto>>.Fail("Invalid period."));
+        try
+        {
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+            logger.LogInformation("GET Expense trend by User: {User} for {Year}/{Month}, {Months} months, account {AccountId}.", userId, year, month, months, accountId);
+            var report = await reportService.GetExpenseTrendAsync(userId, year, month, months, accountId);
+            return Ok(ApiResponse<List<MonthlyAmountDto>>.Ok(report));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Internal Server Error on GET Expense trend");
+            return StatusCode(500, ApiResponse<List<MonthlyAmountDto>>.Fail("Internal Server Error"));
+        }
+    }
+
+    [HttpGet("account-movements")]
+    [ProducesResponseType(typeof(ApiResponse<List<AccountMovementDto>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAccountMovements([FromQuery] Guid accountId, [FromQuery] int year, [FromQuery] int month)
+    {
+        if (month is < 1 or > 12 || year is < 2000 or > 2100)
+            return BadRequest(ApiResponse<List<AccountMovementDto>>.Fail("Invalid period."));
+        try
+        {
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+            logger.LogInformation("GET Account movements by User: {User} for account {AccountId} in {Year}/{Month}.", userId, accountId, year, month);
+            var movements = await reportService.GetAccountMovementsAsync(userId, accountId, year, month);
+            return Ok(ApiResponse<List<AccountMovementDto>>.Ok(movements));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Internal Server Error on GET Account movements");
+            return StatusCode(500, ApiResponse<List<AccountMovementDto>>.Fail("Internal Server Error"));
+        }
+    }
 }

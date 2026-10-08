@@ -18,6 +18,7 @@ import {
   ChevronsUpDown,
   CircleDollarSign,
   LogOut,
+  Receipt,
   Target,
   User2,
   Wallet,
@@ -80,6 +81,14 @@ export function AppSidebar({ userName }: { userName: string }) {
                 <Link href="/reports">
                   <BarChart2 />
                   <span>Reportes</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <Link href="/expenses">
+                  <Receipt />
+                  <span>Gastos</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
