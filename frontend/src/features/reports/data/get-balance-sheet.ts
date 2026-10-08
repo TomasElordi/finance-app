@@ -1,6 +1,5 @@
 import { cacheTag } from "next/dist/server/use-cache/cache-tag";
-import { serverFetch } from "@/src/shared/lib/api";
-import { ApiResponse } from "@/src/shared/types/api";
+import { fetchApiData } from "@/src/shared/lib/api";
 import { BalanceSheet } from "../types/balance-sheet";
 import { session } from "@/src/shared/lib/session";
 
@@ -11,15 +10,7 @@ function emptyBalanceSheet(year: number): BalanceSheet {
 async function fetchBalanceSheet(token: string, year: number): Promise<BalanceSheet> {
   "use cache";
   cacheTag("reports");
-  try {
-    const response = await serverFetch<ApiResponse<BalanceSheet>>(
-      `/report/balance-sheet?year=${year}`,
-      { auth: false, headers: { Authorization: `Bearer ${token}` } },
-    );
-    return response?.success ? response.data : emptyBalanceSheet(year);
-  } catch {
-    return emptyBalanceSheet(year);
-  }
+  return fetchApiData<BalanceSheet>(`/report/balance-sheet?year=${year}`, token);
 }
 
 export async function getBalanceSheet(year: number): Promise<BalanceSheet> {

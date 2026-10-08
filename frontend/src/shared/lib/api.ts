@@ -1,4 +1,5 @@
 import { apiBaseUrl } from "./envs";
+import { ApiResponse } from "../types/api";
 import { session } from "./session";
 
 export async function apiFetch<T>(path: string, options?: RequestInit) {
@@ -44,4 +45,17 @@ export async function serverFetch<T>(
 
   const text = await res.text();
   return (text ? JSON.parse(text) : null) as T;
+}
+
+// For cached data fetchers: throws instead of returning a fallback so that
+// failures aren't cached as "no data" and reach the error boundary.
+export async function fetchApiData<T>(path: string, token: string): Promise<T> {
+  const response = await serverFetch<ApiResponse<T>>(path, {
+    auth: false,
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response?.success) {
+    throw new Error(`GET ${path} failed: ${response?.message ?? "empty response"}`);
+  }
+  return response.data;
 }
