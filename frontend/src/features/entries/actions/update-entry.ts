@@ -2,7 +2,8 @@
 
 import { serverFetch } from "@/src/shared/lib/api";
 import { ApiResponse } from "@/src/shared/types/api";
-import { revalidateTag, refresh } from "next/cache";
+import { refresh } from "next/cache";
+import { revalidateEntryDependents } from "../utils/revalidate-entry-dependents";
 import { CreateEntrySchema } from "@/src/features/entries/types/create-entry-schema";
 import { UpdateEntryActionState } from "@/src/features/entries/types/update-entry-action-state";
 import { Entry } from "@/src/features/entries/types/entry";
@@ -66,9 +67,7 @@ export async function updateEntryAction(
       return { status: "error", message: response.message, errors: {} };
     }
 
-    revalidateTag("entries", {});
-    revalidateTag("accounts", {});
-    revalidateTag("reports", {});
+    revalidateEntryDependents();
     refresh();
     return { status: "success" };
   } catch (error) {
