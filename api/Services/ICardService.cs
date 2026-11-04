@@ -8,7 +8,7 @@ public interface ICardService
     Task<CardUpcomingDto> GetUpcomingAsync(Guid userId, int year, int month);
     Task<CardItemResponseDto> CreateItemAsync(Guid userId, CardItemRequestDto request);
     Task<CardItemResponseDto> UpdateItemAsync(Guid userId, Guid itemId, CardItemRequestDto request);
-    Task DeleteItemAsync(Guid userId, Guid itemId);
+    Task DeleteItemAsync(Guid userId, Guid itemId, int? fromYear = null, int? fromMonth = null);
     Task<List<PersonDto>> GetPeopleAsync(Guid userId);
     Task<PersonDto> CreatePersonAsync(Guid userId, CreatePersonRequestDto request);
     Task DeletePersonAsync(Guid userId, Guid personId);

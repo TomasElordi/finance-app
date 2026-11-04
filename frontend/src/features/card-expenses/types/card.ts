@@ -17,6 +17,9 @@ export interface CardItem {
   personName: string;
   installmentNumber: number;
   installments: number;
+  isRecurring: boolean;
+  startYear: number;
+  startMonth: number;
 }
 
 export interface CardPersonTotal {
@@ -57,4 +60,12 @@ export interface CardItemInput {
   month: number;
   currentInstallment: number;
   installments: number;
+  isRecurring: boolean;
+  // Editing a recurring item: keep earlier months and apply changes from year/month on.
+  fromThisMonth: boolean;
+}
+
+// A recurring item that was already charged in months before the one being viewed.
+export function startedBefore(item: CardItem, year: number, month: number) {
+  return item.isRecurring && item.startYear * 12 + item.startMonth < year * 12 + month;
 }

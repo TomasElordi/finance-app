@@ -20,7 +20,9 @@ public class CardService(AppDbContext db) : ICardService
         db.CardItems.Where(i =>
             i.UserId == userId &&
             i.StartYear * 12 + i.StartMonth - 1 <= monthIndex &&
-            i.StartYear * 12 + i.StartMonth - 1 + i.Installments > monthIndex);
+            (i.IsRecurring
+                ? i.EndYear == null || i.EndYear * 12 + i.EndMonth - 1 >= monthIndex
+                : i.StartYear * 12 + i.StartMonth - 1 + i.Installments > monthIndex));
 
     public async Task<CardStatementDto> GetStatementAsync(Guid userId, int year, int month)
     {
@@ -71,9 +73,10 @@ public class CardService(AppDbContext db) : ICardService
         ValidatePeriod(year, month);
         var index = MonthIndex(year, month);
 
-        // Items still running after this month.
+        // Purchases still running after this month. Recurring items have no fixed end,
+        // so they aren't part of what's committed.
         var items = await db.CardItems
-            .Where(i => i.UserId == userId && i.StartYear * 12 + i.StartMonth - 1 + i.Installments - 1 > index)
+            .Where(i => i.UserId == userId && !i.IsRecurring && i.StartYear * 12 + i.StartMonth - 1 + i.Installments - 1 > index)
             .Include(i => i.Person)
             .ToListAsync();
 
@@ -125,21 +128,7 @@ public class CardService(AppDbContext db) : ICardService
     public async Task<CardItemResponseDto> CreateItemAsync(Guid userId, CardItemRequestDto request)
     {
         await ValidateItemAsync(userId, request);
-        var (startYear, startMonth) = StartPeriod(request);
-
-        var item = new CardItem
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Name = request.Name.Trim(),
-            Amount = request.Amount,
-            Type = request.Type,
-            AccountId = request.AccountId,
-            PersonId = request.PersonId,
-            StartYear = startYear,
-            StartMonth = startMonth,
-            Installments = request.Installments
-        };
+        var item = NewItem(userId, request);
         db.CardItems.Add(item);
         await db.SaveChangesAsync();
 
@@ -154,7 +143,28 @@ public class CardService(AppDbContext db) : ICardService
             throw new ForbiddenException("Unauthorized.");
 
         await ValidateItemAsync(userId, request);
-        var (startYear, startMonth) = StartPeriod(request);
+        var index = MonthIndex(request.Year, request.Month);
+
+        // Split a recurring item: it ends the month before, and a new one carries the
+        // changes from this month on, so earlier statements keep their amounts.
+        if (request.FromThisMonth && item.IsRecurring && MonthIndex(item.StartYear, item.StartMonth) < index)
+        {
+            var next = NewItem(userId, request);
+            if (next.IsRecurring)
+            {
+                next.EndYear = item.EndYear;
+                next.EndMonth = item.EndMonth;
+            }
+            (item.EndYear, item.EndMonth) = FromIndex(index - 1);
+            db.CardItems.Add(next);
+            await db.SaveChangesAsync();
+            return await LoadDtoAsync(next.Id, index);
+        }
+
+        // A recurring item edited in every month keeps its original start.
+        var (startYear, startMonth) = request.IsRecurring && item.IsRecurring
+            ? (item.StartYear, item.StartMonth)
+            : StartPeriod(request);
 
         item.Name = request.Name.Trim();
         item.Amount = request.Amount;
@@ -164,17 +174,33 @@ public class CardService(AppDbContext db) : ICardService
         item.StartYear = startYear;
         item.StartMonth = startMonth;
         item.Installments = request.Installments;
+        if (!request.IsRecurring)
+            (item.EndYear, item.EndMonth) = ((int?)null, (int?)null);
+        item.IsRecurring = request.IsRecurring;
         await db.SaveChangesAsync();
 
-        return await LoadDtoAsync(item.Id, MonthIndex(request.Year, request.Month));
+        return await LoadDtoAsync(item.Id, index);
     }
 
-    public async Task DeleteItemAsync(Guid userId, Guid itemId)
+    public async Task DeleteItemAsync(Guid userId, Guid itemId, int? fromYear = null, int? fromMonth = null)
     {
         var item = await db.CardItems.FirstOrDefaultAsync(i => i.Id == itemId)
             ?? throw new NotFoundException("Card item not found.");
         if (item.UserId != userId)
             throw new ForbiddenException("Unauthorized.");
+
+        if (fromYear is { } year && fromMonth is { } month && item.IsRecurring)
+        {
+            ValidatePeriod(year, month);
+            var index = MonthIndex(year, month);
+            // Stop charging from this month on; earlier months keep it.
+            if (MonthIndex(item.StartYear, item.StartMonth) < index)
+            {
+                (item.EndYear, item.EndMonth) = FromIndex(index - 1);
+                await db.SaveChangesAsync();
+                return;
+            }
+        }
 
         db.CardItems.Remove(item);
         await db.SaveChangesAsync();
@@ -244,6 +270,10 @@ public class CardService(AppDbContext db) : ICardService
             throw new ValidationException("La cuota actual debe estar entre 1 y el total de cuotas.");
         if (request.Type != CardItemType.Expense && request.Installments != 1)
             throw new ValidationException("Solo los gastos pueden ser en cuotas.");
+        if (request.IsRecurring && request.Type != CardItemType.Expense)
+            throw new ValidationException("Solo los gastos pueden ser recurrentes.");
+        if (request.IsRecurring && request.Installments != 1)
+            throw new ValidationException("Un gasto recurrente no puede ser en cuotas.");
 
         if (request.AccountId is { } accountId &&
             !await db.Accounts.AnyAsync(a => a.Id == accountId && a.UserId == userId))
@@ -255,10 +285,32 @@ public class CardService(AppDbContext db) : ICardService
     }
 
     // First month of the purchase, counting back from the installment shown on the statement.
+    // A recurring item starts in the statement where it's loaded.
     private static (int Year, int Month) StartPeriod(CardItemRequestDto request)
     {
-        var start = MonthIndex(request.Year, request.Month) - (request.CurrentInstallment - 1);
-        return (start / 12, start % 12 + 1);
+        var current = request.IsRecurring ? 1 : request.CurrentInstallment;
+        return FromIndex(MonthIndex(request.Year, request.Month) - (current - 1));
+    }
+
+    private static (int Year, int Month) FromIndex(int index) => (index / 12, index % 12 + 1);
+
+    private static CardItem NewItem(Guid userId, CardItemRequestDto request)
+    {
+        var (startYear, startMonth) = StartPeriod(request);
+        return new CardItem
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Name = request.Name.Trim(),
+            Amount = request.Amount,
+            Type = request.Type,
+            AccountId = request.AccountId,
+            PersonId = request.PersonId,
+            StartYear = startYear,
+            StartMonth = startMonth,
+            Installments = request.Installments,
+            IsRecurring = request.IsRecurring
+        };
     }
 
     private async Task<CardItemResponseDto> LoadDtoAsync(Guid itemId, int monthIndex)
@@ -281,6 +333,9 @@ public class CardService(AppDbContext db) : ICardService
         PersonId = item.PersonId,
         PersonName = item.Person?.Name ?? OwnerName,
         InstallmentNumber = monthIndex - MonthIndex(item.StartYear, item.StartMonth) + 1,
-        Installments = item.Installments
+        Installments = item.Installments,
+        IsRecurring = item.IsRecurring,
+        StartYear = item.StartYear,
+        StartMonth = item.StartMonth
     };
 }

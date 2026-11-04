@@ -111,9 +111,21 @@ namespace api.Migrations
                         .HasColumnType("numeric")
                         .HasColumnName("amount");
 
+                    b.Property<int?>("EndMonth")
+                        .HasColumnType("integer")
+                        .HasColumnName("end_month");
+
+                    b.Property<int?>("EndYear")
+                        .HasColumnType("integer")
+                        .HasColumnName("end_year");
+
                     b.Property<int>("Installments")
                         .HasColumnType("integer")
                         .HasColumnName("installments");
+
+                    b.Property<bool>("IsRecurring")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_recurring");
 
                     b.Property<string>("Name")
                         .IsRequired()

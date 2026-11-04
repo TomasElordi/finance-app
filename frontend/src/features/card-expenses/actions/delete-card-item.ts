@@ -5,9 +5,14 @@ import { serverFetch } from "@/src/shared/lib/api";
 import { ApiResponse } from "@/src/shared/types/api";
 import { ActionState } from "@/src/shared/types/action-state";
 
-export async function deleteCardItemAction(id: string): Promise<ActionState<Record<string, never>>> {
+// With `from`, a recurring item stops being charged from that month on instead of being deleted.
+export async function deleteCardItemAction(
+  id: string,
+  from?: { year: number; month: number },
+): Promise<ActionState<Record<string, never>>> {
   try {
-    const response = await serverFetch<ApiResponse<null> | null>(`/card/items/${id}`, {
+    const query = from ? `?fromYear=${from.year}&fromMonth=${from.month}` : "";
+    const response = await serverFetch<ApiResponse<null> | null>(`/card/items/${id}${query}`, {
       method: "DELETE",
       auth: true,
     });

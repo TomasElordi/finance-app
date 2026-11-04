@@ -4,6 +4,8 @@ using api.Models.Enums;
 
 // A line of the credit card statement. A purchase in installments is stored once and
 // shows up in every month from (StartYear, StartMonth) for Installments months.
+// A recurring item shows up every month from its start until (EndYear, EndMonth),
+// or indefinitely while the end is null.
 public class CardItem
 {
     [Key]
@@ -21,4 +23,8 @@ public class CardItem
     public required int StartYear { get; set; }
     public required int StartMonth { get; set; }
     public required int Installments { get; set; }
+    public bool IsRecurring { get; set; }
+    // Last month a recurring item is charged (inclusive). Null while it's still active.
+    public int? EndYear { get; set; }
+    public int? EndMonth { get; set; }
 }

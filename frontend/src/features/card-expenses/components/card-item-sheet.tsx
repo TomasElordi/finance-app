@@ -27,6 +27,7 @@ import {
   CardItem,
   CardItemType,
   Person,
+  startedBefore,
 } from "../types/card";
 import { saveCardItemAction } from "../actions/save-card-item";
 import { createPersonAction } from "../actions/create-person";
@@ -34,6 +35,14 @@ import { createPersonAction } from "../actions/create-person";
 // Radix Select doesn't accept "" as an item value.
 const NONE = "none";
 const NEW_PERSON = "new";
+
+type Payment = "single" | "installments" | "recurring";
+
+const PAYMENT_LABELS: Record<Payment, string> = {
+  single: "Un pago",
+  installments: "En cuotas",
+  recurring: "Recurrente (todos los meses)",
+};
 
 interface CardItemSheetProps {
   accounts: Account[];
@@ -49,9 +58,10 @@ interface Draft {
   type: CardItemType;
   accountId: string;
   personId: string;
-  inInstallments: boolean;
+  payment: Payment;
   currentInstallment: string;
   installments: string;
+  fromThisMonth: boolean;
 }
 
 function draftFrom(item?: CardItem): Draft {
@@ -61,14 +71,21 @@ function draftFrom(item?: CardItem): Draft {
     type: item?.type ?? "Expense",
     accountId: item?.accountId ?? NONE,
     personId: item?.personId ?? NONE,
-    inInstallments: (item?.installments ?? 1) > 1,
-    currentInstallment: String(item?.installmentNumber ?? 1),
-    installments: String(item?.installments ?? 2),
+    payment: item?.isRecurring
+      ? "recurring"
+      : (item?.installments ?? 1) > 1
+        ? "installments"
+        : "single",
+    currentInstallment: String(item && !item.isRecurring ? item.installmentNumber : 1),
+    installments: String(item && item.installments > 1 ? item.installments : 2),
+    fromThisMonth: true,
   };
 }
 
 export default function CardItemSheet({ accounts, people, year, month, item }: CardItemSheetProps) {
   const isEdit = !!item;
+  // Only a recurring item already charged in earlier months can be edited "from this month on".
+  const canSplit = !!item && startedBefore(item, year, month);
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<Draft>(() => draftFrom(item));
   const [extraPeople, setExtraPeople] = useState<Person[]>([]);
@@ -109,7 +126,8 @@ export default function CardItemSheet({ accounts, people, year, month, item }: C
 
   function handleSave() {
     const amount = Number(draft.amount);
-    const usesInstallments = draft.type === "Expense" && draft.inInstallments;
+    const payment: Payment = draft.type === "Expense" ? draft.payment : "single";
+    const usesInstallments = payment === "installments";
     const installments = usesInstallments ? Number(draft.installments) : 1;
     const currentInstallment = usesInstallments ? Number(draft.currentInstallment) : 1;
 
@@ -136,6 +154,8 @@ export default function CardItemSheet({ accounts, people, year, month, item }: C
           month,
           currentInstallment,
           installments,
+          isRecurring: payment === "recurring",
+          fromThisMonth: canSplit && draft.fromThisMonth,
         },
         item?.id,
       );
@@ -167,7 +187,9 @@ export default function CardItemSheet({ accounts, people, year, month, item }: C
           <SheetDescription>
             {isEdit && item.installments > 1
               ? "Los cambios aplican a todas las cuotas de esta compra."
-              : "Un gasto, impuesto o saldo a favor del resumen de la tarjeta."}
+              : isEdit && item.isRecurring
+                ? "Gasto recurrente: se repite todos los meses."
+                : "Un gasto, impuesto o saldo a favor del resumen de la tarjeta."}
           </SheetDescription>
         </SheetHeader>
 
@@ -201,7 +223,11 @@ export default function CardItemSheet({ accounts, people, year, month, item }: C
 
           <Field>
             <FieldLabel htmlFor="card-item-amount">
-              {draft.type === "Expense" && draft.inInstallments ? "Monto de la cuota" : "Monto"}
+              {draft.type === "Expense" && draft.payment === "installments"
+                ? "Monto de la cuota"
+                : draft.type === "Expense" && draft.payment === "recurring"
+                  ? "Monto mensual"
+                  : "Monto"}
             </FieldLabel>
             <Input
               id="card-item-amount"
@@ -216,16 +242,27 @@ export default function CardItemSheet({ accounts, people, year, month, item }: C
 
           {draft.type === "Expense" && (
             <div className="flex flex-col gap-3 rounded-lg border p-3">
-              <label className="flex items-center gap-2 text-sm font-medium">
-                <input
-                  type="checkbox"
-                  className="size-4 accent-primary"
-                  checked={draft.inInstallments}
-                  onChange={(e) => update("inInstallments", e.target.checked)}
-                />
-                En cuotas
-              </label>
-              {draft.inInstallments && (
+              <Field>
+                <FieldLabel>Pago</FieldLabel>
+                <Select value={draft.payment} onValueChange={(v) => update("payment", v as Payment)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(PAYMENT_LABELS) as Payment[]).map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {PAYMENT_LABELS[p]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              {draft.payment === "recurring" && !isEdit && (
+                <p className="text-xs text-muted-foreground">
+                  Aparece en este resumen y en todos los siguientes hasta que lo des de baja.
+                </p>
+              )}
+              {draft.payment === "installments" && (
                 <div className="flex items-end gap-2">
                   <Field>
                     <FieldLabel htmlFor="card-item-current">Cuota actual</FieldLabel>
@@ -308,6 +345,24 @@ export default function CardItemSheet({ accounts, people, year, month, item }: C
               </SelectContent>
             </Select>
           </Field>
+
+          {canSplit && (
+            <Field>
+              <FieldLabel>Aplicar cambios</FieldLabel>
+              <Select
+                value={draft.fromThisMonth ? "from" : "all"}
+                onValueChange={(v) => update("fromThisMonth", v === "from")}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="from">Desde este mes en adelante</SelectItem>
+                  <SelectItem value="all">En todos los meses</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+          )}
 
           {error && <p className="text-sm text-destructive">{error}</p>}
 

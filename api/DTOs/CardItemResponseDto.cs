@@ -15,4 +15,7 @@ public class CardItemResponseDto
     // Installment number in the requested month (1-based).
     public required int InstallmentNumber { get; set; }
     public required int Installments { get; set; }
+    public required bool IsRecurring { get; set; }
+    public required int StartYear { get; set; }
+    public required int StartMonth { get; set; }
 }
