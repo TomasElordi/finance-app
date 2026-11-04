@@ -96,6 +96,66 @@ namespace api.Migrations
                     b.ToTable("budgets", (string)null);
                 });
 
+            modelBuilder.Entity("api.Models.CardItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("AccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("account_id");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric")
+                        .HasColumnName("amount");
+
+                    b.Property<int>("Installments")
+                        .HasColumnType("integer")
+                        .HasColumnName("installments");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid?>("PersonId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("person_id");
+
+                    b.Property<int>("StartMonth")
+                        .HasColumnType("integer")
+                        .HasColumnName("start_month");
+
+                    b.Property<int>("StartYear")
+                        .HasColumnType("integer")
+                        .HasColumnName("start_year");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer")
+                        .HasColumnName("type");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_card_items");
+
+                    b.HasIndex("AccountId")
+                        .HasDatabaseName("ix_card_items_account_id");
+
+                    b.HasIndex("PersonId")
+                        .HasDatabaseName("ix_card_items_person_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_card_items_user_id");
+
+                    b.ToTable("card_items", (string)null);
+                });
+
             modelBuilder.Entity("api.Models.Entry", b =>
                 {
                     b.Property<Guid>("Id")
@@ -166,6 +226,32 @@ namespace api.Migrations
                         .HasDatabaseName("ix_entry_lines_entry_id");
 
                     b.ToTable("entry_lines", (string)null);
+                });
+
+            modelBuilder.Entity("api.Models.Person", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_people");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_people_user_id");
+
+                    b.ToTable("people", (string)null);
                 });
 
             modelBuilder.Entity("api.Models.RefreshToken", b =>
@@ -262,6 +348,34 @@ namespace api.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("api.Models.CardItem", b =>
+                {
+                    b.HasOne("api.Models.Account", "Account")
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_card_items_accounts_account_id");
+
+                    b.HasOne("api.Models.Person", "Person")
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_card_items_people_person_id");
+
+                    b.HasOne("api.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_card_items_users_user_id");
+
+                    b.Navigation("Account");
+
+                    b.Navigation("Person");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("api.Models.Entry", b =>
                 {
                     b.HasOne("api.Models.User", "User")
@@ -293,6 +407,18 @@ namespace api.Migrations
                     b.Navigation("Account");
 
                     b.Navigation("Entry");
+                });
+
+            modelBuilder.Entity("api.Models.Person", b =>
+                {
+                    b.HasOne("api.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_people_users_user_id");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("api.Models.RefreshToken", b =>
