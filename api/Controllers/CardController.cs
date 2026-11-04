@@ -39,10 +39,12 @@ public class CardController(ILogger<CardController> logger, ICardService cardSer
             Ok(ApiResponse<CardItemResponseDto>.Ok(await cardService.UpdateItemAsync(UserId, id, request))));
 
     [HttpDelete("items/{id}")]
-    public Task<IActionResult> DeleteItem([FromRoute] Guid id) =>
+    // With fromYear/fromMonth, a recurring item stops being charged from that month on
+    // instead of being deleted.
+    public Task<IActionResult> DeleteItem([FromRoute] Guid id, [FromQuery] int? fromYear, [FromQuery] int? fromMonth) =>
         Handle<object>("DELETE card item", async () =>
         {
-            await cardService.DeleteItemAsync(UserId, id);
+            await cardService.DeleteItemAsync(UserId, id, fromYear, fromMonth);
             return NoContent();
         });
 

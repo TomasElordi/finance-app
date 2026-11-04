@@ -15,4 +15,8 @@ public class CardItemRequestDto
     public required int Month { get; set; }
     public int CurrentInstallment { get; set; } = 1;
     public int Installments { get; set; } = 1;
+    public bool IsRecurring { get; set; }
+    // For an existing recurring item that started before Year/Month: keep earlier months
+    // as they were and apply the changes from Year/Month on.
+    public bool FromThisMonth { get; set; }
 }

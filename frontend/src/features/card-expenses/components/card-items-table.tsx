@@ -1,3 +1,4 @@
+import { Repeat } from "lucide-react";
 import { formatCurrency } from "@/src/features/accounts/utils/format";
 import { Account } from "@/src/features/accounts/types/account";
 import { CARD_ITEM_TYPE_LABELS, CardItem, Person } from "../types/card";
@@ -48,7 +49,16 @@ export default function CardItemsTable({ items, accounts, people, year, month }:
                 {item.accountName ?? "—"}
               </td>
               <td className="px-3 py-2 tabular-nums text-muted-foreground">
-                {item.installments > 1 ? `${item.installmentNumber}/${item.installments}` : "—"}
+                {item.isRecurring ? (
+                  <span className="inline-flex items-center gap-1">
+                    <Repeat className="size-3.5" />
+                    Mensual
+                  </span>
+                ) : item.installments > 1 ? (
+                  `${item.installmentNumber}/${item.installments}`
+                ) : (
+                  "—"
+                )}
               </td>
               <td
                 className={`px-3 py-2 text-right tabular-nums ${
@@ -66,7 +76,7 @@ export default function CardItemsTable({ items, accounts, people, year, month }:
                     month={month}
                     item={item}
                   />
-                  <DeleteCardItemButton item={item} />
+                  <DeleteCardItemButton item={item} year={year} month={month} />
                 </div>
               </td>
             </tr>
