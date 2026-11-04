@@ -12,9 +12,10 @@ const MONTH_NAMES = [
 interface PeriodSelectorProps {
   year: number;
   month: number;
+  allowFuture?: boolean;
 }
 
-export default function PeriodSelector({ year, month }: PeriodSelectorProps) {
+export default function PeriodSelector({ year, month, allowFuture = false }: PeriodSelectorProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -41,7 +42,7 @@ export default function PeriodSelector({ year, month }: PeriodSelectorProps) {
         variant="outline"
         size="icon"
         onClick={() => navigate(1)}
-        disabled={isCurrentPeriod}
+        disabled={isCurrentPeriod && !allowFuture}
       >
         <ChevronRight className="h-4 w-4" />
       </Button>

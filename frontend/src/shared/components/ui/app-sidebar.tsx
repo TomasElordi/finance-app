@@ -17,6 +17,7 @@ import {
   BookOpen,
   ChevronsUpDown,
   CircleDollarSign,
+  CreditCard,
   LogOut,
   Receipt,
   Target,
@@ -89,6 +90,14 @@ export function AppSidebar({ userName }: { userName: string }) {
                 <Link href="/expenses">
                   <Receipt />
                   <span>Gastos</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <Link href="/card-expenses">
+                  <CreditCard />
+                  <span>Tarjeta</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

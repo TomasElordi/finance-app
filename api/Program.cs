@@ -19,6 +19,7 @@ builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<IEntryService, EntryService>();
 builder.Services.AddScoped<IBudgetService, BudgetService>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<ICardService, CardService>();
 builder.Services.AddControllers();
 
 builder.Services.AddHttpContextAccessor();
