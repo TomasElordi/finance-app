@@ -71,6 +71,15 @@ public class AuthService(AppDbContext db, IJwtService jwtService) : IAuthService
         return new AuthResponseDto { AccessToken = tokens.AccessToken, RefreshToken = tokens.RefreshToken, User = new UserResponseDto { Id = user.Id, Name = user.Name, Email = user.Email } };
     }
 
+    public async Task<User?> ValidateCredentialsAsync(string email, string password)
+    {
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email.Trim());
+        if (user is null)
+            return null;
+        var result = new PasswordHasher<string>().VerifyHashedPassword(null!, user.Password, password);
+        return result == PasswordVerificationResult.Failed ? null : user;
+    }
+
     public async Task LogoutAsync(Guid userId)
     {
         var tokens = await db.RefreshToken.Where(r => r.UserId == userId).ToListAsync();
