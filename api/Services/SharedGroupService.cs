@@ -20,9 +20,9 @@ public class SharedGroupService(AppDbContext db) : ISharedGroupService
 
     public async Task<List<SharedGroupSummaryDto>> GetGroupsAsync(Guid userId)
     {
-        var groups = await db.SharedGroupMembers
-            .Where(m => m.UserId == userId)
-            .Select(m => m.Group)
+        // Include can't follow a Select through a navigation, so filter the groups directly.
+        var groups = await db.SharedGroups
+            .Where(g => g.Members.Any(m => m.UserId == userId))
             .Include(g => g.Members).ThenInclude(m => m.User)
             .OrderBy(g => g.Name)
             .ToListAsync();
