@@ -4,7 +4,7 @@ import { serverFetch } from "@/src/shared/lib/api";
 import { ApiResponse } from "@/src/shared/types/api";
 import { LoginSchema } from "@/src/features/auth/login/types/login-schema";
 import { redirect, RedirectType } from "next/navigation";
-import { PAGES } from "@/src/shared/lib/pages";
+import { NEXT_PARAM, safeNextPath } from "@/src/shared/lib/redirect";
 import { LoginActionState } from "@/src/features/auth/login/types/login-action-state";
 import { AuthResponse } from "@/src/features/auth/shared/types/auth-response";
 import { session } from "@/src/shared/lib/session";
@@ -51,5 +51,5 @@ export async function loginAction(
     console.log("error", error);
     return { status: "error", message: "Error de conexión", errors: {} };
   }
-  redirect(PAGES.HOME, RedirectType.replace);
+  redirect(safeNextPath(formData.get(NEXT_PARAM)), RedirectType.replace);
 }

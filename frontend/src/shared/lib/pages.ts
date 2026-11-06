@@ -8,6 +8,7 @@ export const PAGES = {
   BUDGET: "/budget",
   EXPENSES: "/expenses",
   CARD_EXPENSES: "/card-expenses",
+  SHARED_EXPENSES: "/shared-expenses",
 };
 
 export type Page = (typeof PAGES)[keyof typeof PAGES];
@@ -20,6 +21,7 @@ export const PROTECTED_PAGES = new Set<Page>([
   PAGES.BUDGET,
   PAGES.EXPENSES,
   PAGES.CARD_EXPENSES,
+  PAGES.SHARED_EXPENSES,
 ]);
 
 export const AUTH_PAGES = new Set<Page>([PAGES.LOGIN, PAGES.REGISTER]);

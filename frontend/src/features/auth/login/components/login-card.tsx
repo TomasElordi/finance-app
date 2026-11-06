@@ -20,6 +20,8 @@ import {
 } from "@/src/shared/components/ui/field";
 import { LoginActionState } from "@/src/features/auth/login/types/login-action-state";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { NEXT_PARAM, withNext } from "@/src/shared/lib/redirect";
 import {
   InputGroup,
   InputGroupAddon,
@@ -30,6 +32,8 @@ import { EyeIcon, EyeOffIcon } from "lucide-react";
 const initialState: LoginActionState = { status: "idle" };
 
 export default function LoginCard() {
+  // Set by the proxy when a logged-out user opened a protected link (e.g. an invite).
+  const next = useSearchParams().get(NEXT_PARAM);
   const [email, setEmail] = useState("");
   const [state, formAction, pending] = useActionState(
     loginAction,
@@ -47,12 +51,13 @@ export default function LoginCard() {
         </CardDescription>
         <CardAction>
           <Button variant="link">
-            <Link href="/register"> Sign up</Link>
+            <Link href={withNext("/register", next)}> Sign up</Link>
           </Button>
         </CardAction>
       </CardHeader>
       <CardContent>
         <form action={formAction}>
+          {next && <input type="hidden" name={NEXT_PARAM} value={next} />}
           <div className="flex flex-col gap-6">
             <Field className="grid gap-2" data-invalid={emailError}>
               <FieldLabel htmlFor="email">Email</FieldLabel>
