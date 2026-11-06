@@ -20,6 +20,7 @@ builder.Services.AddScoped<IEntryService, EntryService>();
 builder.Services.AddScoped<IBudgetService, BudgetService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<ICardService, CardService>();
+builder.Services.AddScoped<ISharedGroupService, SharedGroupService>();
 builder.Services.AddControllers();
 
 builder.Services.AddHttpContextAccessor();

@@ -295,6 +295,228 @@ namespace api.Migrations
                     b.ToTable("refresh_token", (string)null);
                 });
 
+            modelBuilder.Entity("api.Models.SharedCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("group_id");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id")
+                        .HasName("pk_shared_categories");
+
+                    b.HasIndex("GroupId")
+                        .HasDatabaseName("ix_shared_categories_group_id");
+
+                    b.ToTable("shared_categories", (string)null);
+                });
+
+            modelBuilder.Entity("api.Models.SharedExpense", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("CategoryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("category_id");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date")
+                        .HasColumnName("date");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("description");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("group_id");
+
+                    b.Property<Guid>("PaidByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("paid_by_user_id");
+
+                    b.Property<decimal>("Total")
+                        .HasColumnType("numeric")
+                        .HasColumnName("total");
+
+                    b.HasKey("Id")
+                        .HasName("pk_shared_expenses");
+
+                    b.HasIndex("CategoryId")
+                        .HasDatabaseName("ix_shared_expenses_category_id");
+
+                    b.HasIndex("PaidByUserId")
+                        .HasDatabaseName("ix_shared_expenses_paid_by_user_id");
+
+                    b.HasIndex("GroupId", "Date")
+                        .HasDatabaseName("ix_shared_expenses_group_id_date");
+
+                    b.ToTable("shared_expenses", (string)null);
+                });
+
+            modelBuilder.Entity("api.Models.SharedExpenseSplit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric")
+                        .HasColumnName("amount");
+
+                    b.Property<Guid>("ExpenseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("expense_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_shared_expense_splits");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_shared_expense_splits_user_id");
+
+                    b.HasIndex("ExpenseId", "UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_shared_expense_splits_expense_id_user_id");
+
+                    b.ToTable("shared_expense_splits", (string)null);
+                });
+
+            modelBuilder.Entity("api.Models.SharedGroup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("InviteCode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("invite_code");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id")
+                        .HasName("pk_shared_groups");
+
+                    b.HasIndex("InviteCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_shared_groups_invite_code");
+
+                    b.ToTable("shared_groups", (string)null);
+                });
+
+            modelBuilder.Entity("api.Models.SharedGroupMember", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("group_id");
+
+                    b.Property<DateTime>("JoinedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("joined_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_shared_group_members");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_shared_group_members_user_id");
+
+                    b.HasIndex("GroupId", "UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_shared_group_members_group_id_user_id");
+
+                    b.ToTable("shared_group_members", (string)null);
+                });
+
+            modelBuilder.Entity("api.Models.SharedSettlement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric")
+                        .HasColumnName("amount");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date")
+                        .HasColumnName("date");
+
+                    b.Property<Guid>("FromUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("from_user_id");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("group_id");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("note");
+
+                    b.Property<Guid>("ToUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("to_user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_shared_settlements");
+
+                    b.HasIndex("FromUserId")
+                        .HasDatabaseName("ix_shared_settlements_from_user_id");
+
+                    b.HasIndex("ToUserId")
+                        .HasDatabaseName("ix_shared_settlements_to_user_id");
+
+                    b.HasIndex("GroupId", "Date")
+                        .HasDatabaseName("ix_shared_settlements_group_id_date");
+
+                    b.ToTable("shared_settlements", (string)null);
+                });
+
             modelBuilder.Entity("api.Models.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -445,9 +667,134 @@ namespace api.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("api.Models.SharedCategory", b =>
+                {
+                    b.HasOne("api.Models.SharedGroup", "Group")
+                        .WithMany("Categories")
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_shared_categories_shared_groups_group_id");
+
+                    b.Navigation("Group");
+                });
+
+            modelBuilder.Entity("api.Models.SharedExpense", b =>
+                {
+                    b.HasOne("api.Models.SharedCategory", "Category")
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_shared_expenses_shared_categories_category_id");
+
+                    b.HasOne("api.Models.SharedGroup", "Group")
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_shared_expenses_shared_groups_group_id");
+
+                    b.HasOne("api.Models.User", "PaidBy")
+                        .WithMany()
+                        .HasForeignKey("PaidByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_shared_expenses_users_paid_by_user_id");
+
+                    b.Navigation("Category");
+
+                    b.Navigation("Group");
+
+                    b.Navigation("PaidBy");
+                });
+
+            modelBuilder.Entity("api.Models.SharedExpenseSplit", b =>
+                {
+                    b.HasOne("api.Models.SharedExpense", "Expense")
+                        .WithMany("Splits")
+                        .HasForeignKey("ExpenseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_shared_expense_splits_shared_expenses_expense_id");
+
+                    b.HasOne("api.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_shared_expense_splits_users_user_id");
+
+                    b.Navigation("Expense");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("api.Models.SharedGroupMember", b =>
+                {
+                    b.HasOne("api.Models.SharedGroup", "Group")
+                        .WithMany("Members")
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_shared_group_members_shared_groups_group_id");
+
+                    b.HasOne("api.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_shared_group_members_users_user_id");
+
+                    b.Navigation("Group");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("api.Models.SharedSettlement", b =>
+                {
+                    b.HasOne("api.Models.User", "FromUser")
+                        .WithMany()
+                        .HasForeignKey("FromUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_shared_settlements_users_from_user_id");
+
+                    b.HasOne("api.Models.SharedGroup", "Group")
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_shared_settlements_shared_groups_group_id");
+
+                    b.HasOne("api.Models.User", "ToUser")
+                        .WithMany()
+                        .HasForeignKey("ToUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_shared_settlements_users_to_user_id");
+
+                    b.Navigation("FromUser");
+
+                    b.Navigation("Group");
+
+                    b.Navigation("ToUser");
+                });
+
             modelBuilder.Entity("api.Models.Entry", b =>
                 {
                     b.Navigation("EntryLines");
+                });
+
+            modelBuilder.Entity("api.Models.SharedExpense", b =>
+                {
+                    b.Navigation("Splits");
+                });
+
+            modelBuilder.Entity("api.Models.SharedGroup", b =>
+                {
+                    b.Navigation("Categories");
+
+                    b.Navigation("Members");
                 });
 #pragma warning restore 612, 618
         }

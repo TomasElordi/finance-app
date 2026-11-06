@@ -22,6 +22,7 @@ import {
   Receipt,
   Target,
   User2,
+  Users,
   Wallet,
 } from "lucide-react";
 import {
@@ -98,6 +99,14 @@ export function AppSidebar({ userName }: { userName: string }) {
                 <Link href="/card-expenses">
                   <CreditCard />
                   <span>Tarjeta</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <Link href="/shared-expenses">
+                  <Users />
+                  <span>Gastos en común</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

@@ -4,7 +4,7 @@ import { serverFetch } from "@/src/shared/lib/api";
 import { ApiResponse } from "@/src/shared/types/api";
 import { cookies } from "next/headers";
 import { redirect, RedirectType } from "next/navigation";
-import { PAGES } from "@/src/shared/lib/pages";
+import { NEXT_PARAM, safeNextPath } from "@/src/shared/lib/redirect";
 import { RegisterActionState } from "../types/register-action-state";
 import { RegisterSchema } from "../types/register-schema";
 import { AuthResponse } from "../../shared/types/auth-response";
@@ -68,5 +68,5 @@ export async function registerAction(
     console.log("error", error);
     return { status: "error", message: "Error de conexión", errors: {} };
   }
-  redirect(PAGES.HOME, RedirectType.replace);
+  redirect(safeNextPath(formData.get(NEXT_PARAM)), RedirectType.replace);
 }
