@@ -22,6 +22,9 @@ public class AppDbContext : DbContext
     public DbSet<SharedExpense> SharedExpenses { get; set; }
     public DbSet<SharedExpenseSplit> SharedExpenseSplits { get; set; }
     public DbSet<SharedSettlement> SharedSettlements { get; set; }
+    public DbSet<OAuthClient> OAuthClients { get; set; }
+    public DbSet<OAuthAuthorizationCode> OAuthAuthorizationCodes { get; set; }
+    public DbSet<OAuthRefreshToken> OAuthRefreshTokens { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -94,6 +97,31 @@ public class AppDbContext : DbContext
             e.HasOne(s => s.Group).WithMany().HasForeignKey(s => s.GroupId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(s => s.FromUser).WithMany().HasForeignKey(s => s.FromUserId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(s => s.ToUser).WithMany().HasForeignKey(s => s.ToUserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // OAuth for MCP clients. Revoking a client removes its codes and tokens.
+        modelBuilder.Entity<OAuthClient>(e =>
+        {
+            e.ToTable("oauth_clients");
+            e.Property(c => c.ClientId).HasMaxLength(64);
+            e.Property(c => c.Name).HasMaxLength(200);
+            e.HasIndex(c => c.ClientId).IsUnique();
+        });
+
+        modelBuilder.Entity<OAuthAuthorizationCode>(e =>
+        {
+            e.ToTable("oauth_authorization_codes");
+            e.HasIndex(c => c.CodeHash).IsUnique();
+            e.HasOne(c => c.Client).WithMany().HasForeignKey(c => c.ClientId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(c => c.User).WithMany().HasForeignKey(c => c.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<OAuthRefreshToken>(e =>
+        {
+            e.ToTable("oauth_refresh_tokens");
+            e.HasIndex(t => t.TokenHash).IsUnique();
+            e.HasOne(t => t.Client).WithMany().HasForeignKey(t => t.ClientId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(t => t.User).WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

@@ -21,12 +21,14 @@ builder.Services.AddScoped<IBudgetService, BudgetService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<ICardService, CardService>();
 builder.Services.AddScoped<ISharedGroupService, SharedGroupService>();
+builder.Services.AddScoped<IOAuthService, OAuthService>();
 builder.Services.AddControllers();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddMcpServer()
     .WithHttpTransport()
-    .WithTools<EntryTools>();
+    .WithTools<EntryTools>()
+    .WithTools<SharedExpenseTools>();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -54,6 +56,24 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
+        };
+        // MCP clients discover how to log in from the 401 on /mcp (MCP authorization spec):
+        // point them to the protected resource metadata served by OAuthController.
+        options.Events = new JwtBearerEvents
+        {
+            OnChallenge = context =>
+            {
+                if (!context.Request.Path.StartsWithSegments("/mcp"))
+                    return Task.CompletedTask;
+                var request = context.Request;
+                var proto = request.Headers["X-Forwarded-Proto"].FirstOrDefault()?.Split(',')[0].Trim() ?? request.Scheme;
+                var issuer = builder.Configuration["OAuth:Issuer"]?.TrimEnd('/') ?? $"{proto}://{request.Host}";
+                context.HandleResponse();
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                context.Response.Headers.WWWAuthenticate =
+                    $"Bearer resource_metadata=\"{issuer}/.well-known/oauth-protected-resource/mcp\"";
+                return Task.CompletedTask;
+            }
         };
     });
 
