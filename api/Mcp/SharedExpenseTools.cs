@@ -4,6 +4,7 @@ using api.DTOs;
 using api.Exceptions;
 using api.Services;
 using ModelContextProtocol.Server;
+using static api.Mcp.McpErrors;
 
 namespace api.Mcp;
 
@@ -146,27 +147,6 @@ public class SharedExpenseTools(ISharedGroupService service, IHttpContextAccesso
         if (sum != 100m)
             throw new ValidationException($"Percentages add up to {sum}, they must add up to 100.");
         return shares.Select(s => (s.UserId, s.Value)).ToList();
-    }
-
-    // Domain errors come back as text so the model can explain them or retry.
-    private static async Task<object> Run(Func<Task<object>> action)
-    {
-        try
-        {
-            return await action();
-        }
-        catch (ValidationException ex)
-        {
-            return $"Validation error: {ex.Message}";
-        }
-        catch (NotFoundException ex)
-        {
-            return $"Not found: {ex.Message}";
-        }
-        catch (ConflictException ex)
-        {
-            return $"Conflict: {ex.Message}";
-        }
     }
 }
 
