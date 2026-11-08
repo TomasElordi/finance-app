@@ -28,7 +28,8 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddMcpServer()
     .WithHttpTransport()
     .WithTools<EntryTools>()
-    .WithTools<SharedExpenseTools>();
+    .WithTools<SharedExpenseTools>()
+    .WithTools<CardTools>();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
