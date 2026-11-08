@@ -25,6 +25,7 @@ public class AppDbContext : DbContext
     public DbSet<OAuthClient> OAuthClients { get; set; }
     public DbSet<OAuthAuthorizationCode> OAuthAuthorizationCodes { get; set; }
     public DbSet<OAuthRefreshToken> OAuthRefreshTokens { get; set; }
+    public DbSet<LoginFailure> LoginFailures { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -122,6 +123,13 @@ public class AppDbContext : DbContext
             e.HasIndex(t => t.TokenHash).IsUnique();
             e.HasOne(t => t.Client).WithMany().HasForeignKey(t => t.ClientId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(t => t.User).WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<LoginFailure>(e =>
+        {
+            e.ToTable("login_failures");
+            e.Property(f => f.Email).HasMaxLength(320);
+            e.HasIndex(f => new { f.Email, f.CreatedAt });
         });
     }
 }
