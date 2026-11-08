@@ -71,6 +71,36 @@ public class SharedExpenseTools(ISharedGroupService service, IHttpContextAccesso
             return (object)expense;
         });
 
+    [McpServerTool(Name = "update_shared_expense", Idempotent = true)]
+    [Description("""
+        Edits a shared expense for every member of the group. Every field replaces the current value, so first read the expense with list_shared_expenses and send back the fields that don't change.
+        The split works like in create_shared_expense: with splitMode "equal" and no `shares`, it's split between ALL current members, so pass `shares` to keep it between specific members.
+        """)]
+    public Task<object> UpdateSharedExpense(
+        [Description("Group id")] Guid groupId,
+        [Description("Expense id from list_shared_expenses")] Guid expenseId,
+        [Description("What the expense was")] string description,
+        [Description("Total amount paid, positive, up to 2 decimals")] decimal total,
+        [Description("userId of the member who paid")] Guid paidByUserId,
+        [Description("Date of the expense, e.g. 2026-11-05")] DateOnly date,
+        [Description("\"equal\", \"percent\" or \"amount\"")] string splitMode = "equal",
+        [Description("Members taking part and their value (percentage or amount depending on splitMode). Optional for \"equal\".")] List<ShareInput>? shares = null,
+        [Description("Category id from get_shared_group. Optional.")] Guid? categoryId = null)
+        => Run(async () =>
+        {
+            var group = await service.GetGroupAsync(CurrentUserId, groupId);
+            var splits = BuildSplits(total, splitMode, shares, group.Members.Select(m => m.UserId).ToList());
+            return (object)await service.UpdateExpenseAsync(CurrentUserId, groupId, expenseId, new SharedExpenseRequestDto
+            {
+                Date = date,
+                Description = description,
+                Total = total,
+                CategoryId = categoryId,
+                PaidByUserId = paidByUserId,
+                Splits = splits
+            });
+        });
+
     [McpServerTool(Name = "delete_shared_expense", Destructive = true)]
     [Description("Deletes a shared expense for every member of the group. Use list_shared_expenses to find its id. Confirm with the user before deleting.")]
     public Task<object> DeleteSharedExpense(
@@ -99,6 +129,17 @@ public class SharedExpenseTools(ISharedGroupService service, IHttpContextAccesso
             Amount = amount,
             Note = note
         }));
+
+    [McpServerTool(Name = "delete_settlement", Destructive = true)]
+    [Description("Deletes a payment between members (settlement), e.g. one recorded by mistake. Use list_shared_expenses to find its id. Confirm with the user before deleting.")]
+    public Task<object> DeleteSettlement(
+        [Description("Group id")] Guid groupId,
+        [Description("Settlement id from list_shared_expenses")] Guid settlementId)
+        => Run(async () =>
+        {
+            await service.DeleteSettlementAsync(CurrentUserId, groupId, settlementId);
+            return (object)"Settlement deleted.";
+        });
 
     // Turns the split mode into exact amounts in cents; leftover cents go to the
     // largest shares first, matching the web app.

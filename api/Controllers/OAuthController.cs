@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using System.Text.Json.Serialization;
+using api.Exceptions;
 using api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
@@ -139,9 +140,18 @@ public class OAuthController(ILogger<OAuthController> logger, IOAuthService oaut
         if (action == "cancel")
             return RedirectToClient(request, ("error", "access_denied"));
 
-        var user = string.IsNullOrWhiteSpace(email) || string.IsNullOrEmpty(password)
-            ? null
-            : await auth.ValidateCredentialsAsync(email, password);
+        Models.User? user;
+        try
+        {
+            user = string.IsNullOrWhiteSpace(email) || string.IsNullOrEmpty(password)
+                ? null
+                : await auth.ValidateCredentialsAsync(email, password);
+        }
+        catch (TooManyAttemptsException ex)
+        {
+            logger.LogWarning("OAuth login locked for client {ClientId} after too many failures", client.ClientId);
+            return LoginPage(request, client.Name, email, ex.Message);
+        }
         if (user is null)
         {
             logger.LogInformation("OAuth login failed for client {ClientId}", client.ClientId);

@@ -36,14 +36,23 @@ public class AuthService(AppDbContext db, IJwtService jwtService) : IAuthService
 
     public async Task<AuthResponseDto> LoginAsync(LoginRequestDto dto)
     {
-        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == dto.Email)
-            ?? throw new NotFoundException("User not exists.");
+        await EnsureNotLockedAsync(dto.Email);
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+        if (user is null)
+        {
+            await RecordFailureAsync(dto.Email);
+            throw new NotFoundException("User not exists.");
+        }
 
         var hasher = new PasswordHasher<string>();
         var result = hasher.VerifyHashedPassword(null!, user.Password, dto.Password);
 
         if (result != PasswordVerificationResult.Success)
+        {
+            await RecordFailureAsync(dto.Email);
             throw new ValidationException("Wrong password.");
+        }
+        await ClearFailuresAsync(dto.Email);
 
         var tokens = jwtService.GenerateTokens(user.Id, user.Name, user.Email);
         db.RefreshToken.Add(new RefreshToken { Id = Guid.NewGuid(), UserId = user.Id, Token = tokens.RefreshToken, ExpirationDate = DateTime.UtcNow.AddDays(30) });
@@ -73,11 +82,49 @@ public class AuthService(AppDbContext db, IJwtService jwtService) : IAuthService
 
     public async Task<User?> ValidateCredentialsAsync(string email, string password)
     {
+        await EnsureNotLockedAsync(email);
         var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email.Trim());
-        if (user is null)
+        if (user is null || new PasswordHasher<string>().VerifyHashedPassword(null!, user.Password, password) == PasswordVerificationResult.Failed)
+        {
+            await RecordFailureAsync(email);
             return null;
-        var result = new PasswordHasher<string>().VerifyHashedPassword(null!, user.Password, password);
-        return result == PasswordVerificationResult.Failed ? null : user;
+        }
+        await ClearFailuresAsync(email);
+        return user;
+    }
+
+    // ---------- Login throttling ----------
+    // After MaxFailures failed logins for an email within FailureWindow, further attempts
+    // are rejected (even with the right password) until the oldest failure ages out.
+
+    private const int MaxFailures = 5;
+    private static readonly TimeSpan FailureWindow = TimeSpan.FromMinutes(15);
+
+    private static string ThrottleKey(string email) => email.Trim().ToLowerInvariant();
+
+    private async Task EnsureNotLockedAsync(string email)
+    {
+        var key = ThrottleKey(email);
+        var since = DateTime.UtcNow - FailureWindow;
+        var failures = await db.LoginFailures.CountAsync(f => f.Email == key && f.CreatedAt > since);
+        if (failures >= MaxFailures)
+            throw new TooManyAttemptsException("Demasiados intentos fallidos. Probá de nuevo en 15 minutos.");
+    }
+
+    private async Task RecordFailureAsync(string email)
+    {
+        var key = ThrottleKey(email);
+        var since = DateTime.UtcNow - FailureWindow;
+        // Expired rows of every email go too, so guesses at made-up emails don't pile up.
+        await db.LoginFailures.Where(f => f.CreatedAt <= since).ExecuteDeleteAsync();
+        db.LoginFailures.Add(new LoginFailure { Id = Guid.NewGuid(), Email = key, CreatedAt = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+    }
+
+    private Task ClearFailuresAsync(string email)
+    {
+        var key = ThrottleKey(email);
+        return db.LoginFailures.Where(f => f.Email == key).ExecuteDeleteAsync();
     }
 
     public async Task LogoutAsync(Guid userId)

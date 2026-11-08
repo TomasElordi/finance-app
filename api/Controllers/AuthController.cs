@@ -54,6 +54,11 @@ public class AuthController(ILogger<AuthController> logger, IAuthService authSer
             logger.LogWarning(ex, "Wrong password for {Email}", dto.Email);
             return BadRequest(ApiResponse<AuthResponseDto>.Fail(ex.Message));
         }
+        catch (TooManyAttemptsException ex)
+        {
+            logger.LogWarning("Login locked for {Email} after too many failures", dto.Email);
+            return StatusCode(StatusCodes.Status429TooManyRequests, ApiResponse<AuthResponseDto>.Fail(ex.Message));
+        }
         catch (Exception ex)
         {
             logger.LogCritical(ex, "Internal Server Error on Login");

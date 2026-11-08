@@ -241,6 +241,32 @@ namespace api.Migrations
                     b.ToTable("entry_lines", (string)null);
                 });
 
+            modelBuilder.Entity("api.Models.LoginFailure", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("email");
+
+                    b.HasKey("Id")
+                        .HasName("pk_login_failures");
+
+                    b.HasIndex("Email", "CreatedAt")
+                        .HasDatabaseName("ix_login_failures_email_created_at");
+
+                    b.ToTable("login_failures", (string)null);
+                });
+
             modelBuilder.Entity("api.Models.OAuthAuthorizationCode", b =>
                 {
                     b.Property<Guid>("Id")
