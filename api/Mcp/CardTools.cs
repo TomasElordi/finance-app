@@ -1,10 +1,10 @@
 using System.ComponentModel;
 using System.Security.Claims;
 using api.DTOs;
-using api.Exceptions;
 using api.Models.Enums;
 using api.Services;
 using ModelContextProtocol.Server;
+using static api.Mcp.McpErrors;
 
 namespace api.Mcp;
 
@@ -134,29 +134,4 @@ public class CardTools(ICardService service, IHttpContextAccessor httpContextAcc
             await service.DeletePersonAsync(CurrentUserId, personId);
             return (object)"Person deleted.";
         });
-
-    // Domain errors come back as text so the model can explain them or retry.
-    private static async Task<object> Run(Func<Task<object>> action)
-    {
-        try
-        {
-            return await action();
-        }
-        catch (ValidationException ex)
-        {
-            return $"Validation error: {ex.Message}";
-        }
-        catch (NotFoundException ex)
-        {
-            return $"Not found: {ex.Message}";
-        }
-        catch (ForbiddenException ex)
-        {
-            return $"Forbidden: {ex.Message}";
-        }
-        catch (ConflictException ex)
-        {
-            return $"Conflict: {ex.Message}";
-        }
-    }
 }
