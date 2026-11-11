@@ -40,3 +40,9 @@ jobs:
             --no-confirm-changeset \
             --no-fail-on-empty-changeset \
             --parameter-overrides "SupabaseProjectRef=lvkfyupzdkjxrisgapti JwtIssuer=finance-api JwtAudience=finance-app PostgresPassword=${POSTGRES_PASSWORD} JwtKey=${JWT_KEY}"
+
+      # Old deploy zips pile up in the SAM bucket; keep only the deployed one.
+      # A failed cleanup shouldn't mark the deploy as failed.
+      - name: Clean up old SAM artifacts
+        continue-on-error: true
+        run: bash scripts/cleanup-sam-artifacts.sh finance-app finance-app
