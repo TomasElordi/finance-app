@@ -9,11 +9,15 @@ import GroupSwitcher from "./group-switcher";
 import MonthSummary from "./month-summary";
 import SettlementsList from "./settlements-list";
 import { JoinGroupForm } from "./group-forms";
+import CategoryDistribution from "./category-distribution";
+import SharedTrendChart from "./shared-trend-chart";
+import { MonthlyAmount } from "@/src/features/expenses/types/expenses";
 
 interface SharedExpensesViewProps {
   groups: SharedGroupSummary[];
   group: SharedGroupDetail;
   period: SharedPeriod;
+  trend: MonthlyAmount[];
   year: number;
   month: number;
   joinCode?: string;
@@ -23,6 +27,7 @@ export default function SharedExpensesView({
   groups,
   group,
   period,
+  trend,
   year,
   month,
   joinCode,
@@ -55,6 +60,17 @@ export default function SharedExpensesView({
       )}
 
       <BalanceSummary group={group} year={year} month={month} />
+
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <section className="flex min-w-0 flex-col gap-3">
+          <h2 className="text-sm font-semibold text-muted-foreground">Por categoría</h2>
+          <CategoryDistribution categories={period.byCategory} total={period.total} />
+        </section>
+        <section className="flex min-w-0 flex-col gap-3">
+          <h2 className="text-sm font-semibold text-muted-foreground">Últimos 12 meses</h2>
+          <SharedTrendChart data={trend} year={year} month={month} />
+        </section>
+      </div>
 
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold text-muted-foreground">Gastos del mes</h2>

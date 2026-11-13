@@ -13,6 +13,7 @@ public interface ISharedGroupService
     Task LeaveGroupAsync(Guid userId, Guid groupId);
 
     Task<SharedPeriodDto> GetPeriodAsync(Guid userId, Guid groupId, int year, int month);
+    Task<List<MonthlyAmountDto>> GetTrendAsync(Guid userId, Guid groupId, int year, int month, int months);
     Task<SharedExpenseDto> CreateExpenseAsync(Guid userId, Guid groupId, SharedExpenseRequestDto request);
     Task<SharedExpenseDto> UpdateExpenseAsync(Guid userId, Guid groupId, Guid expenseId, SharedExpenseRequestDto request);
     Task DeleteExpenseAsync(Guid userId, Guid groupId, Guid expenseId);
