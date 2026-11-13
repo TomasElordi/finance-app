@@ -190,6 +190,33 @@ public class SharedGroupService(AppDbContext db) : ISharedGroupService
         };
     }
 
+    // Expense total per month for the `months` months ending at year/month.
+    public async Task<List<MonthlyAmountDto>> GetTrendAsync(Guid userId, Guid groupId, int year, int month, int months)
+    {
+        await EnsureMemberAsync(userId, groupId);
+        if (year < 2000 || year > 2100 || month < 1 || month > 12 || months < 1 || months > 36)
+            throw new ValidationException("Período inválido.");
+
+        var to = new DateOnly(year, month, 1).AddMonths(1);
+        var from = to.AddMonths(-months);
+
+        var totals = await db.SharedExpenses
+            .Where(e => e.GroupId == groupId && e.Date >= from && e.Date < to)
+            .GroupBy(e => new { e.Date.Year, e.Date.Month })
+            .Select(g => new { g.Key.Year, g.Key.Month, Total = g.Sum(e => e.Total) })
+            .ToListAsync();
+
+        return Enumerable.Range(0, months)
+            .Select(i => from.AddMonths(i))
+            .Select(d => new MonthlyAmountDto
+            {
+                Year = d.Year,
+                Month = d.Month,
+                Amount = totals.FirstOrDefault(t => t.Year == d.Year && t.Month == d.Month)?.Total ?? 0
+            })
+            .ToList();
+    }
+
     public async Task<SharedExpenseDto> CreateExpenseAsync(Guid userId, Guid groupId, SharedExpenseRequestDto request)
     {
         await EnsureMemberAsync(userId, groupId);

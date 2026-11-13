@@ -12,15 +12,7 @@ export default function MonthSummary({ period }: { period: SharedPeriod }) {
           ))}
         </dl>
       </div>
-      <div className="flex flex-col gap-2 rounded-lg border p-4">
-        <span className="text-sm font-medium">Por categoría</span>
-        <dl className="flex flex-col gap-1 text-sm text-muted-foreground">
-          {period.byCategory.map((c) => (
-            <Row key={c.id ?? "none"} label={c.name} value={c.amount} />
-          ))}
-        </dl>
-      </div>
-      <div className="flex items-baseline justify-between rounded-lg bg-muted px-4 py-3 md:col-span-2">
+      <div className="flex items-baseline justify-between rounded-lg bg-muted px-4 py-3">
         <span className="font-medium">Total del mes</span>
         <span className="text-2xl font-semibold tabular-nums">{formatCurrency(period.total)}</span>
       </div>

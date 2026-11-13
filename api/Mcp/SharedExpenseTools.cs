@@ -37,6 +37,18 @@ public class SharedExpenseTools(ISharedGroupService service, IHttpContextAccesso
         return Run(async () => (object)await service.GetPeriodAsync(CurrentUserId, groupId, year ?? today.Year, month ?? today.Month));
     }
 
+    [McpServerTool(Name = "get_shared_expense_trend", ReadOnly = true)]
+    [Description("Total of a shared group's expenses per month for the `months` months ending at year/month (months without expenses come as 0). Use it to compare months or answer questions about a year; use list_shared_expenses for the detail of one month.")]
+    public Task<object> GetSharedExpenseTrend(
+        [Description("Group id from list_shared_groups")] Guid groupId,
+        [Description("Year of the last month, e.g. 2026. Defaults to the current year.")] int? year = null,
+        [Description("Last month 1-12. Defaults to the current month.")] int? month = null,
+        [Description("How many months to return, 1-36. Defaults to 12.")] int months = 12)
+    {
+        var today = DateTime.UtcNow;
+        return Run(async () => (object)await service.GetTrendAsync(CurrentUserId, groupId, year ?? today.Year, month ?? today.Month, months));
+    }
+
     [McpServerTool(Name = "create_shared_expense")]
     [Description("""
         Records a shared expense in a group: who paid it and how it's split between members.

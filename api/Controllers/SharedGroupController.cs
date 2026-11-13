@@ -64,6 +64,12 @@ public class SharedGroupController(ILogger<SharedGroupController> logger, IShare
         Handle<SharedPeriodDto>("GET shared period", async () =>
             Ok(ApiResponse<SharedPeriodDto>.Ok(await service.GetPeriodAsync(UserId, groupId, year, month))));
 
+    [HttpGet("{groupId}/trend")]
+    [ProducesResponseType(typeof(ApiResponse<List<MonthlyAmountDto>>), StatusCodes.Status200OK)]
+    public Task<IActionResult> GetTrend([FromRoute] Guid groupId, [FromQuery] int year, [FromQuery] int month, [FromQuery] int months = 12) =>
+        Handle<List<MonthlyAmountDto>>("GET shared trend", async () =>
+            Ok(ApiResponse<List<MonthlyAmountDto>>.Ok(await service.GetTrendAsync(UserId, groupId, year, month, months))));
+
     [HttpPost("{groupId}/expenses")]
     [ProducesResponseType(typeof(ApiResponse<SharedExpenseDto>), StatusCodes.Status200OK)]
     public Task<IActionResult> CreateExpense([FromRoute] Guid groupId, [FromBody] SharedExpenseRequestDto request) =>
