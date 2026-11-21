@@ -19,6 +19,34 @@ public class EntryTools(IEntryService entryService, IAccountService accountServi
     public Task<List<AccountResponseDto>> ListAccounts()
         => accountService.GetAccountsAsync(CurrentUserId);
 
+    [McpServerTool(Name = "create_account")]
+    [Description("Adds an account to the user's chart of accounts. Check list_accounts first to avoid duplicates. Nature: Asset (cash, bank, receivables), Liability (debts, credit card), Equity, Income or Expense (spending categories).")]
+    public Task<object> CreateAccount(
+        [Description("Account name, e.g. \"Supermercado\" or \"Banco Galicia\"")] string name,
+        [Description("'Asset', 'Liability', 'Equity', 'Income' or 'Expense'")] NatureType nature)
+        => McpErrors.Run(async () =>
+        {
+            name = name?.Trim() ?? "";
+            if (name.Length is < 1 or > 100)
+                throw new ValidationException("Name is required and can't exceed 100 characters.");
+            var accounts = await accountService.GetAccountsAsync(CurrentUserId);
+            if (accounts.Any(a => a.Nature == nature && a.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
+                throw new ConflictException($"There's already a {nature} account named \"{name}\".");
+            return await accountService.CreateAccountAsync(CurrentUserId, new PostAccountRequestDto { Name = name, Nature = nature });
+        });
+
+    [McpServerTool(Name = "close_month")]
+    [Description("Closes the PREVIOUS calendar month (not the current one): creates the closing entry that moves the balances of every Income and Expense account, as of that month's last day, to the \"Resultados Anteriores\" equity account. Fails if that month is already closed. Confirm with the user before running it.")]
+    public async Task<string> CloseMonth()
+    {
+        var result = await McpErrors.Run(async () =>
+        {
+            var entry = await entryService.CreateClosingEntryAsync(CurrentUserId);
+            return (object)$"Created closing entry {entry.Id}: \"{entry.Title}\" on {entry.Date:yyyy-MM-dd} with {entry.EntryLines.Count} line(s).";
+        });
+        return result.ToString()!;
+    }
+
     [McpServerTool(Name = "list_entries")]
     [Description("Lists journal entries (asientos) for the current user, most recent first, with their lines. Results are paginated; use totalPages to know if there are more.")]
     public Task<GetEntriesResponseDto> ListEntries(
