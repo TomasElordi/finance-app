@@ -101,3 +101,30 @@ public class InvestmentSnapshotGroupDto
     public required decimal ValueUsd { get; set; }
     public required decimal CostUsd { get; set; }
 }
+
+public class SimulateContributionRequestDto
+{
+    public required decimal Amount { get; set; }
+    // "USD" or "ARS"; ARS is converted at the portfolio's dollar rate.
+    public required string Currency { get; set; }
+}
+
+public class ContributionPlanDto
+{
+    public required decimal AmountUsd { get; set; }
+    public required decimal UsdRate { get; set; }
+    public required decimal InvestedUsd { get; set; }
+    public required decimal LeftoverUsd { get; set; }
+    public required List<ContributionLineDto> Lines { get; set; }
+}
+
+public class ContributionLineDto
+{
+    public required Guid HoldingId { get; set; }
+    public required string Ticker { get; set; }
+    public required decimal Units { get; set; }
+    public required decimal AmountUsd { get; set; }
+    public required decimal AmountArs { get; set; }
+    public required decimal TargetPercent { get; set; }
+    public required decimal PercentAfter { get; set; }
+}

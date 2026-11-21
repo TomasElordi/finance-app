@@ -27,6 +27,13 @@ public class InvestmentController(ILogger<InvestmentController> logger, IInvestm
         Handle<List<InvestmentSnapshotDto>>("GET investment history", async () =>
             Ok(ApiResponse<List<InvestmentSnapshotDto>>.Ok(await investmentService.GetHistoryAsync(UserId, months))));
 
+    // A what-if: nothing is saved.
+    [HttpPost("simulate")]
+    [ProducesResponseType(typeof(ApiResponse<ContributionPlanDto>), StatusCodes.Status200OK)]
+    public Task<IActionResult> SimulateContribution([FromBody] SimulateContributionRequestDto request) =>
+        Handle<ContributionPlanDto>("POST investment simulate", async () =>
+            Ok(ApiResponse<ContributionPlanDto>.Ok(await investmentService.SimulateContributionAsync(UserId, request))));
+
     [HttpPut("portfolio")]
     [ProducesResponseType(typeof(ApiResponse<InvestmentPortfolioDto>), StatusCodes.Status200OK)]
     public Task<IActionResult> UpdatePortfolio([FromBody] UpdatePortfolioRequestDto request) =>

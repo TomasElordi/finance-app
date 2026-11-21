@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Calculator } from "lucide-react";
 import {
   Sheet,
@@ -13,9 +13,9 @@ import {
 import { Button } from "@/src/shared/components/ui/button";
 import { Input } from "@/src/shared/components/ui/input";
 import { Field, FieldLabel } from "@/src/shared/components/ui/field";
-import { InvestmentPortfolio } from "../types/investment";
+import { ContributionPlan, InvestmentPortfolio } from "../types/investment";
 import { DisplayCurrency, formatMoney, formatPercent, formatQuantity } from "../utils/format";
-import { planContribution } from "../utils/contribution";
+import { simulateContributionAction } from "../actions/investment-actions";
 
 export default function ContributionSheet({ portfolio }: { portfolio: InvestmentPortfolio }) {
   const [amount, setAmount] = useState("");
@@ -23,18 +23,52 @@ export default function ContributionSheet({ portfolio }: { portfolio: Investment
   const rate = portfolio.usdRate;
   const hasHoldings = portfolio.groups.some((g) => g.holdings.length > 0);
 
+  const [plan, setPlan] = useState<ContributionPlan | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const raw = Number(amount);
-  const amountUsd = raw > 0 ? (currency === "ARS" ? (rate > 0 ? raw / rate : 0) : raw) : 0;
-  const plan = planContribution(portfolio, amountUsd);
-  const both = (usd: number) => (
+  const valid = raw > 0;
+
+  // Asks the API as the user types, debounced; a stale answer is dropped.
+  useEffect(() => {
+    if (!valid) return;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      const result = await simulateContributionAction(raw, currency);
+      if (cancelled) return;
+      setLoading(false);
+      if (result.status === "error") {
+        setError(result.message);
+        setPlan(null);
+      } else {
+        setError(null);
+        setPlan(result.plan);
+      }
+    }, 350);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [raw, currency, valid]);
+
+  const shown = valid ? plan : null;
+  const both = (usd: number, ars = usd * rate) => (
     <div className="flex flex-col items-end">
       <span>{formatMoney(usd, "USD")}</span>
-      {rate > 0 && <span className="text-xs text-muted-foreground">{formatMoney(usd * rate, "ARS")}</span>}
+      {rate > 0 && <span className="text-xs text-muted-foreground">{formatMoney(ars, "ARS")}</span>}
     </div>
   );
 
   return (
-    <Sheet onOpenChange={(open) => open && setAmount("")}>
+    <Sheet
+      onOpenChange={(open) => {
+        if (!open) return;
+        setAmount("");
+        setPlan(null);
+        setError(null);
+      }}
+    >
       <SheetTrigger asChild>
         <Button variant="outline" disabled={!hasHoldings || rate <= 0}>
           <Calculator className="h-4 w-4" />
@@ -81,14 +115,17 @@ export default function ContributionSheet({ portfolio }: { portfolio: Investment
             </div>
           </Field>
 
-          {amountUsd > 0 && plan.lines.length === 0 && (
+          {valid && error && <p className="text-sm text-destructive">{error}</p>}
+          {valid && loading && !shown && <p className="text-sm text-muted-foreground">Calculando…</p>}
+
+          {shown && shown.lines.length === 0 && (
             <p className="text-sm text-muted-foreground">
               El monto no alcanza para comprar una unidad de lo que está por debajo del objetivo.
             </p>
           )}
 
-          {plan.lines.length > 0 && (
-            <>
+          {shown && shown.lines.length > 0 && (
+            <div className={`flex flex-col gap-4 transition-opacity ${loading ? "opacity-60" : ""}`}>
               <div className="overflow-x-auto rounded-lg border">
                 <table className="w-full text-sm">
                   <thead className="bg-muted/50 text-left text-muted-foreground">
@@ -100,11 +137,11 @@ export default function ContributionSheet({ portfolio }: { portfolio: Investment
                     </tr>
                   </thead>
                   <tbody>
-                    {plan.lines.map((l) => (
+                    {shown.lines.map((l) => (
                       <tr key={l.holdingId} className="border-t">
                         <td className="px-3 py-2 font-medium">{l.ticker}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{formatQuantity(l.units)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{both(l.amountUsd)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{both(l.amountUsd, l.amountArs)}</td>
                         <td className="px-3 py-2 text-right tabular-nums">
                           <div className="flex flex-col items-end">
                             <span>{formatPercent(l.percentAfter)}</span>
@@ -121,16 +158,16 @@ export default function ContributionSheet({ portfolio }: { portfolio: Investment
               <dl className="flex flex-col gap-1 rounded-lg bg-muted px-4 py-3 text-sm">
                 <div className="flex items-center justify-between gap-2">
                   <dt className="font-medium">Total a invertir</dt>
-                  <dd className="tabular-nums font-semibold">{both(plan.investedUsd)}</dd>
+                  <dd className="tabular-nums font-semibold">{both(shown.investedUsd)}</dd>
                 </div>
-                {plan.leftoverUsd >= 0.01 && (
+                {shown.leftoverUsd >= 0.01 && (
                   <div className="flex items-center justify-between gap-2 text-muted-foreground">
                     <dt>Sin asignar (no alcanza para otra unidad)</dt>
-                    <dd className="tabular-nums">{both(plan.leftoverUsd)}</dd>
+                    <dd className="tabular-nums">{both(shown.leftoverUsd)}</dd>
                   </div>
                 )}
               </dl>
-            </>
+            </div>
           )}
         </div>
       </SheetContent>

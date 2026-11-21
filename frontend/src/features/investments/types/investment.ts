@@ -85,3 +85,21 @@ export interface InvestmentSnapshot {
   costUsd: number;
   groups: { name: string; color: GroupColor; valueUsd: number; costUsd: number }[];
 }
+
+export interface ContributionLine {
+  holdingId: string;
+  ticker: string;
+  units: number;
+  amountUsd: number;
+  amountArs: number;
+  targetPercent: number;
+  percentAfter: number;
+}
+
+export interface ContributionPlan {
+  amountUsd: number;
+  usdRate: number;
+  investedUsd: number;
+  leftoverUsd: number;
+  lines: ContributionLine[];
+}
