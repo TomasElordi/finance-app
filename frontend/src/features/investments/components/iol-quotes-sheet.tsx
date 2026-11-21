@@ -18,7 +18,9 @@ import { formatMoney } from "../utils/format";
 import { fetchIolQuotesAction } from "../actions/investment-actions";
 
 // Asks for the IOL credentials every time: they're sent once to fetch prices and kept
-// nowhere (not in state after submitting, not in the database).
+// nowhere on our side (not in the database, and dropped from this component once used).
+// The fields keep their values until the request finishes and the form is replaced by the
+// result, which is what browsers look for to offer saving the login for autofill.
 export default function IolQuotesSheet({ portfolio }: { portfolio: InvestmentPortfolio }) {
   const autoCount = portfolio.groups.reduce((n, g) => n + g.holdings.filter((h) => h.autoPrice).length, 0);
   const [open, setOpen] = useState(false);
@@ -39,15 +41,20 @@ export default function IolQuotesSheet({ portfolio }: { portfolio: InvestmentPor
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!username.trim() || !password) return setError("Ingresá tu usuario y contraseña de IOL.");
-    const user = username.trim();
-    const pass = password;
-    setPassword("");
     setError(null);
     startTransition(async () => {
-      const response = await fetchIolQuotesAction(user, pass);
-      if (response.status === "error") return setError(response.message);
-      setUsername("");
+      const response = await fetchIolQuotesAction(username.trim(), password);
+      if (response.status === "error") {
+        setPassword("");
+        setError(response.message);
+        return;
+      }
       setResult(response.result);
+      // The form is gone by now; drop the credentials from memory too.
+      setTimeout(() => {
+        setUsername("");
+        setPassword("");
+      }, 0);
     });
   }
 
@@ -68,7 +75,7 @@ export default function IolQuotesSheet({ portfolio }: { portfolio: InvestmentPor
         </SheetHeader>
         <div className="flex flex-col gap-4 p-4">
           {!result ? (
-            <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+            <form className="flex flex-col gap-4" method="post" onSubmit={handleSubmit}>
               <div className="flex gap-2 rounded-lg border p-3 text-xs text-muted-foreground">
                 <ShieldCheck className="size-4 shrink-0" />
                 <span>
@@ -80,6 +87,7 @@ export default function IolQuotesSheet({ portfolio }: { portfolio: InvestmentPor
                 <FieldLabel htmlFor="iol-user">Usuario de IOL</FieldLabel>
                 <Input
                   id="iol-user"
+                  name="username"
                   autoComplete="username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
@@ -89,6 +97,7 @@ export default function IolQuotesSheet({ portfolio }: { portfolio: InvestmentPor
                 <FieldLabel htmlFor="iol-pass">Contraseña</FieldLabel>
                 <Input
                   id="iol-pass"
+                  name="password"
                   type="password"
                   autoComplete="current-password"
                   value={password}
