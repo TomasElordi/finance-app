@@ -20,8 +20,7 @@ public class OAuthService(AppDbContext db, IJwtService jwtService, IConfiguratio
 {
     private static readonly TimeSpan CodeLifetime = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan RefreshLifetime = TimeSpan.FromDays(90);
-    // Must match the lifetime JwtService gives access tokens.
-    private const int AccessTokenSeconds = 24 * 60 * 60;
+    private static readonly int AccessTokenSeconds = (int)JwtService.AccessTokenLifetime.TotalSeconds;
     private const int MaxRedirectUris = 10;
 
     // Only these hosts (plus loopback, for local tools like MCP Inspector) may receive
@@ -151,7 +150,7 @@ public class OAuthService(AppDbContext db, IJwtService jwtService, IConfiguratio
 
     private async Task<OAuthTokenResult> IssueTokensAsync(OAuthClient client, User user)
     {
-        var accessToken = jwtService.GenerateTokens(user.Id, user.Name, user.Email).AccessToken;
+        var accessToken = jwtService.GenerateTokens(user.Id, user.Name, user.Email, client.ClientId).AccessToken;
         var refreshToken = NewToken();
         db.OAuthRefreshTokens.Add(new OAuthRefreshToken
         {

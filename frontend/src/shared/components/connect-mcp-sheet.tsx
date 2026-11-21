@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { Check, Copy } from "lucide-react";
+import { revokeMcpClientsAction } from "../actions/revoke-mcp-clients";
+import AlertConfirm from "./alert-confirm";
 import { Button } from "./ui/button";
 import {
   Sheet,
@@ -24,7 +26,29 @@ export function ConnectMcpSheet({
 }) {
   const [copied, setCopied] = useState<CopyKey | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [confirmRevoke, setConfirmRevoke] = useState(false);
+  const [revoking, startRevoke] = useTransition();
+  const [revokeMessage, setRevokeMessage] = useState<string | null>(null);
   const cliCommand = `claude mcp add --transport http finance-app ${mcpUrl}`;
+
+  function revoke() {
+    setConfirmRevoke(false);
+    setRevokeMessage(null);
+    startRevoke(async () => {
+      const result = await revokeMcpClientsAction();
+      if (result.status === "error") {
+        setRevokeMessage(result.message);
+      } else if (result.clients === 0) {
+        setRevokeMessage("No había clientes conectados.");
+      } else {
+        setRevokeMessage(
+          result.clients === 1
+            ? "Se desconectó 1 cliente."
+            : `Se desconectaron ${result.clients} clientes.`,
+        );
+      }
+    });
+  }
 
   async function copy(key: CopyKey, text: string) {
     try {
@@ -121,13 +145,38 @@ export function ConnectMcpSheet({
 
           <p className="text-xs text-muted-foreground">
             El cliente actúa con tu cuenta: solo ve y modifica tus datos.
-            Podés desconectarlo cuando quieras desde la configuración del
-            cliente.
           </p>
+
+          <section className="flex flex-col gap-2 border-t pt-4">
+            <h3 className="text-sm font-medium">Desconectar</h3>
+            <p className="text-sm text-muted-foreground">
+              Corta el acceso de todos los clientes conectados a tu cuenta. Para
+              volver a usarlos tenés que conectarlos de nuevo.
+            </p>
+            <Button
+              variant="outline"
+              className="self-start"
+              disabled={revoking}
+              onClick={() => setConfirmRevoke(true)}
+            >
+              {revoking ? "Desconectando…" : "Desconectar todos los clientes"}
+            </Button>
+            {revokeMessage && (
+              <p className="text-sm text-muted-foreground">{revokeMessage}</p>
+            )}
+          </section>
 
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
       </SheetContent>
+      <AlertConfirm
+        open={confirmRevoke}
+        title="¿Desconectar todos los clientes MCP?"
+        description="Los clientes conectados (por ejemplo Claude) pierden el acceso a tu cuenta de inmediato."
+        confirmText="Desconectar"
+        onCancel={() => setConfirmRevoke(false)}
+        onConfirm={revoke}
+      />
     </Sheet>
   );
 }

@@ -9,7 +9,7 @@ namespace api.Controllers;
 
 [ApiController]
 [Route("api/auth")]
-public class AuthController(ILogger<AuthController> logger, IAuthService authService) : ControllerBase
+public class AuthController(ILogger<AuthController> logger, IAuthService authService, ITokenRevocationService revocation) : ControllerBase
 {
     [HttpPost("register")]
     [ProducesResponseType(typeof(ApiResponse<AuthResponseDto>), StatusCodes.Status200OK)]
@@ -44,14 +44,10 @@ public class AuthController(ILogger<AuthController> logger, IAuthService authSer
             var result = await authService.LoginAsync(dto);
             return Ok(ApiResponse<AuthResponseDto>.Ok(result));
         }
-        catch (NotFoundException ex)
-        {
-            logger.LogWarning(ex, "User {Email} not exists", dto.Email);
-            return BadRequest(ApiResponse<AuthResponseDto>.Fail(ex.Message));
-        }
         catch (ValidationException ex)
         {
-            logger.LogWarning(ex, "Wrong password for {Email}", dto.Email);
+            // Same message whether the email exists or not.
+            logger.LogWarning("Failed login for {Email}", dto.Email);
             return BadRequest(ApiResponse<AuthResponseDto>.Fail(ex.Message));
         }
         catch (TooManyAttemptsException ex)
@@ -88,6 +84,8 @@ public class AuthController(ILogger<AuthController> logger, IAuthService authSer
         }
     }
 
+    // Revokes the access token used for this request and the user's web refresh tokens.
+    // MCP connections are left alone; they have their own endpoint below.
     [HttpPost("logout")]
     [Authorize]
     public async Task<IActionResult> Logout()
@@ -96,6 +94,8 @@ public class AuthController(ILogger<AuthController> logger, IAuthService authSer
         {
             var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
             logger.LogInformation("Logout for User: {User}", userId);
+            if (HttpContext.Items[AccessTokenInfo.HttpContextKey] is AccessTokenInfo token)
+                await revocation.RevokeAsync(token);
             await authService.LogoutAsync(userId);
             return NoContent();
         }
@@ -103,6 +103,27 @@ public class AuthController(ILogger<AuthController> logger, IAuthService authSer
         {
             logger.LogCritical(ex, "Internal Server Error on Logout");
             return StatusCode(500, ApiResponse<AuthResponseDto>.Fail("Internal Server Error"));
+        }
+    }
+
+    // Disconnects every MCP (OAuth) client of the user: their refresh tokens are deleted
+    // and the access tokens they already hold stop working.
+    [HttpPost("mcp/revoke")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<RevokeMcpResponseDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> RevokeMcpClients()
+    {
+        try
+        {
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+            var clients = await revocation.RevokeMcpClientsAsync(userId);
+            logger.LogInformation("MCP clients revoked for User: {User} ({Clients} connected)", userId, clients);
+            return Ok(ApiResponse<RevokeMcpResponseDto>.Ok(new RevokeMcpResponseDto { Clients = clients }));
+        }
+        catch (Exception ex)
+        {
+            logger.LogCritical(ex, "Internal Server Error on MCP revoke");
+            return StatusCode(500, ApiResponse<RevokeMcpResponseDto>.Fail("Internal Server Error"));
         }
     }
 }

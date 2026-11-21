@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { cacheTag } from "next/cache";
 import { apiBaseUrl } from "./envs";
 import { ApiResponse } from "../types/api";
 import { session } from "./session";
@@ -47,9 +49,18 @@ export async function serverFetch<T>(
   return (text ? JSON.parse(text) : null) as T;
 }
 
+// Cache tag shared by everything fetched with one access token, so logging out can
+// expire it: otherwise a revoked token could keep reading cached data. Hashed so the
+// token itself never ends up in a cache key listing.
+export function sessionCacheTag(token: string): string {
+  return `session:${createHash("sha256").update(token).digest("hex").slice(0, 32)}`;
+}
+
 // For cached data fetchers: throws instead of returning a fallback so that
 // failures aren't cached as "no data" and reach the error boundary.
+// Must be called inside a "use cache" function (it tags that cache entry).
 export async function fetchApiData<T>(path: string, token: string): Promise<T> {
+  cacheTag(sessionCacheTag(token));
   const response = await serverFetch<ApiResponse<T>>(path, {
     auth: false,
     headers: { Authorization: `Bearer ${token}` },

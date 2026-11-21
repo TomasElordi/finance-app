@@ -34,25 +34,14 @@ public class AuthService(AppDbContext db, IJwtService jwtService) : IAuthService
         return new AuthResponseDto { AccessToken = tokens.AccessToken, RefreshToken = tokens.RefreshToken, User = new UserResponseDto { Id = user.Id, Name = user.Name, Email = user.Email } };
     }
 
+    // Same message for an unknown email and a wrong password, so the login can't be used
+    // to find out who has an account.
+    public const string InvalidCredentialsMessage = "Email o contraseña incorrectos.";
+
     public async Task<AuthResponseDto> LoginAsync(LoginRequestDto dto)
     {
-        await EnsureNotLockedAsync(dto.Email);
-        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
-        if (user is null)
-        {
-            await RecordFailureAsync(dto.Email);
-            throw new NotFoundException("User not exists.");
-        }
-
-        var hasher = new PasswordHasher<string>();
-        var result = hasher.VerifyHashedPassword(null!, user.Password, dto.Password);
-
-        if (result != PasswordVerificationResult.Success)
-        {
-            await RecordFailureAsync(dto.Email);
-            throw new ValidationException("Wrong password.");
-        }
-        await ClearFailuresAsync(dto.Email);
+        var user = await ValidateCredentialsAsync(dto.Email, dto.Password)
+            ?? throw new ValidationException(InvalidCredentialsMessage);
 
         var tokens = jwtService.GenerateTokens(user.Id, user.Name, user.Email);
         db.RefreshToken.Add(new RefreshToken { Id = Guid.NewGuid(), UserId = user.Id, Token = tokens.RefreshToken, ExpirationDate = DateTime.UtcNow.AddDays(30) });
@@ -84,7 +73,11 @@ public class AuthService(AppDbContext db, IJwtService jwtService) : IAuthService
     {
         await EnsureNotLockedAsync(email);
         var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email.Trim());
-        if (user is null || new PasswordHasher<string>().VerifyHashedPassword(null!, user.Password, password) == PasswordVerificationResult.Failed)
+        // Unknown emails still pay for a hash check, so the response time doesn't tell
+        // them apart from a wrong password.
+        var verified = new PasswordHasher<string>()
+            .VerifyHashedPassword(null!, user?.Password ?? DummyHash.Value, password) != PasswordVerificationResult.Failed;
+        if (user is null || !verified)
         {
             await RecordFailureAsync(email);
             return null;
@@ -92,6 +85,9 @@ public class AuthService(AppDbContext db, IJwtService jwtService) : IAuthService
         await ClearFailuresAsync(email);
         return user;
     }
+
+    private static readonly Lazy<string> DummyHash =
+        new(() => new PasswordHasher<string>().HashPassword(null!, Guid.NewGuid().ToString()));
 
     // ---------- Login throttling ----------
     // After MaxFailures failed logins for an email within FailureWindow, further attempts

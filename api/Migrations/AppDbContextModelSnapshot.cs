@@ -454,6 +454,36 @@ namespace api.Migrations
                     b.ToTable("refresh_token", (string)null);
                 });
 
+            modelBuilder.Entity("api.Models.RevokedToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("Jti")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("jti");
+
+                    b.HasKey("Id")
+                        .HasName("pk_revoked_tokens");
+
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("ix_revoked_tokens_expires_at");
+
+                    b.HasIndex("Jti")
+                        .IsUnique()
+                        .HasDatabaseName("ix_revoked_tokens_jti");
+
+                    b.ToTable("revoked_tokens", (string)null);
+                });
+
             modelBuilder.Entity("api.Models.SharedCategory", b =>
                 {
                     b.Property<Guid>("Id")
@@ -687,6 +717,10 @@ namespace api.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("email");
+
+                    b.Property<DateTime?>("McpTokensRevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("mcp_tokens_revoked_at");
 
                     b.Property<string>("Name")
                         .IsRequired()
