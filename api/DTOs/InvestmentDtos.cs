@@ -180,6 +180,9 @@ public class InvestmentSnapshotDto
     public required decimal UsdRate { get; set; }
     public required decimal ValueUsd { get; set; }
     public required decimal CostUsd { get; set; }
+    public required decimal RealizedGainUsd { get; set; }
+    public required decimal IncomeUsd { get; set; }
+    public required decimal InvestedUsd { get; set; }
     public required List<InvestmentSnapshotGroupDto> Groups { get; set; }
 }
 

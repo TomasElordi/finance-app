@@ -453,6 +453,18 @@ namespace api.Migrations
                         .HasColumnType("date")
                         .HasColumnName("date");
 
+                    b.Property<decimal>("IncomeUsd")
+                        .HasColumnType("numeric")
+                        .HasColumnName("income_usd");
+
+                    b.Property<decimal>("InvestedUsd")
+                        .HasColumnType("numeric")
+                        .HasColumnName("invested_usd");
+
+                    b.Property<decimal>("RealizedGainUsd")
+                        .HasColumnType("numeric")
+                        .HasColumnName("realized_gain_usd");
+
                     b.Property<decimal>("UsdRate")
                         .HasColumnType("numeric")
                         .HasColumnName("usd_rate");
@@ -580,6 +592,30 @@ namespace api.Migrations
                         .HasDatabaseName("ix_investment_trades_holding_id_date");
 
                     b.ToTable("investment_trades", (string)null);
+                });
+
+            modelBuilder.Entity("api.Models.IolLoginFailure", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_iol_login_failures");
+
+                    b.HasIndex("UserId", "CreatedAt")
+                        .HasDatabaseName("ix_iol_login_failures_user_id_created_at");
+
+                    b.ToTable("iol_login_failures", (string)null);
                 });
 
             modelBuilder.Entity("api.Models.LoginFailure", b =>

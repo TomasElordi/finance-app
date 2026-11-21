@@ -34,6 +34,7 @@ public class AppDbContext : DbContext
     public DbSet<InvestmentSnapshotGroup> InvestmentSnapshotGroups { get; set; }
     public DbSet<InvestmentTrade> InvestmentTrades { get; set; }
     public DbSet<InvestmentIncome> InvestmentIncomes { get; set; }
+    public DbSet<IolLoginFailure> IolLoginFailures { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -187,6 +188,12 @@ public class AppDbContext : DbContext
             e.HasIndex(i => new { i.HoldingId, i.Date });
             e.HasIndex(i => i.UserId);
             e.HasOne(i => i.Holding).WithMany(h => h.Incomes).HasForeignKey(i => i.HoldingId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<IolLoginFailure>(e =>
+        {
+            e.ToTable("iol_login_failures");
+            e.HasIndex(f => new { f.UserId, f.CreatedAt });
         });
 
         modelBuilder.Entity<InvestmentSnapshot>(e =>

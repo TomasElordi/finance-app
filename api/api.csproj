@@ -31,4 +31,9 @@
     <None Include="Certificates/supabase-root-2021-ca.crt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The calculations under test (Recalculate, PlanContribution) are internal. -->
+    <InternalsVisibleTo Include="api.Tests" />
+  </ItemGroup>
+
 </Project>

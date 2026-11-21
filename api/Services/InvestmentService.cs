@@ -49,8 +49,15 @@ public class InvestmentService(AppDbContext db) : IInvestmentService
         var rate = portfolio.UsdRate;
         if (rate <= 0)
             throw new ValidationException("Set the dollar rate first.");
-        var amountUsd = currency == "ARS" ? request.Amount / rate : request.Amount;
+        return PlanContribution(portfolio, request.Amount, currency);
+    }
 
+    // Pure so it can be tested without a database: everything it needs is in the portfolio.
+    // ARS amounts are converted at the portfolio's dollar rate.
+    internal static ContributionPlanDto PlanContribution(InvestmentPortfolioDto portfolio, decimal amount, string currency)
+    {
+        var rate = portfolio.UsdRate;
+        var amountUsd = currency == "ARS" ? amount / rate : amount;
         var eligible = portfolio.Groups
             .SelectMany(g => g.Holdings.Select(h => (Holding: h, Fractional: g.AllowFractional)))
             .Where(x => x.Holding.TargetPercent > 0 && x.Holding.PriceUsd > 0)
@@ -567,6 +574,9 @@ public class InvestmentService(AppDbContext db) : IInvestmentService
         snapshot.UsdRate = portfolio.UsdRate;
         snapshot.ValueUsd = portfolio.ValueUsd;
         snapshot.CostUsd = portfolio.CostUsd;
+        snapshot.RealizedGainUsd = portfolio.RealizedGainUsd;
+        snapshot.IncomeUsd = portfolio.IncomeUsd;
+        snapshot.InvestedUsd = portfolio.InvestedUsd;
         db.InvestmentSnapshotGroups.AddRange(portfolio.Groups.Select(g => new InvestmentSnapshotGroup
         {
             Id = Guid.NewGuid(),
@@ -595,6 +605,9 @@ public class InvestmentService(AppDbContext db) : IInvestmentService
                 UsdRate = x.UsdRate,
                 ValueUsd = x.ValueUsd,
                 CostUsd = x.CostUsd,
+                RealizedGainUsd = x.RealizedGainUsd,
+                IncomeUsd = x.IncomeUsd,
+                InvestedUsd = x.InvestedUsd,
                 Groups = x.Groups
                     .OrderBy(g => g.Name)
                     .Select(g => new InvestmentSnapshotGroupDto
