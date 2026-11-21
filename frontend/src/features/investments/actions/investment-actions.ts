@@ -6,6 +6,7 @@ import { serverFetch } from "@/src/shared/lib/api";
 import { ApiResponse } from "@/src/shared/types/api";
 import { ActionState } from "@/src/shared/types/action-state";
 import {
+  ContributionPlan,
   InvestmentGroupInput,
   InvestmentHoldingInput,
   InvestmentPricesInput,
@@ -58,4 +59,24 @@ export async function saveHoldingAction(input: InvestmentHoldingInput, id?: stri
 
 export async function deleteHoldingAction(id: string) {
   return send(apiPath`/investments/holdings/${id}`, "DELETE");
+}
+
+// A what-if computed by the API (same logic the MCP tool uses); nothing is saved.
+export async function simulateContributionAction(
+  amount: number,
+  currency: "USD" | "ARS",
+): Promise<{ status: "success"; plan: ContributionPlan } | { status: "error"; message: string }> {
+  try {
+    const response = await serverFetch<ApiResponse<ContributionPlan>>("/investments/simulate", {
+      method: "POST",
+      auth: true,
+      body: JSON.stringify({ amount, currency }),
+    });
+    if (!response?.success || !response.data) {
+      return { status: "error", message: response?.message ?? "No se pudo simular" };
+    }
+    return { status: "success", plan: response.data };
+  } catch {
+    return { status: "error", message: "Error de conexión" };
+  }
 }

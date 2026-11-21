@@ -26,6 +26,96 @@ public class InvestmentService(AppDbContext db) : IInvestmentService
         return BuildPortfolio(portfolio, groups);
     }
 
+    // Buy-only rebalance: each holding's target is (current value + contribution) × its share
+    // of the target percents; the contribution covers the gaps, proportionally when it can't
+    // cover all of them. Units are whole unless the group allows fractions (2 decimals), and
+    // what rounding leaves over is spent one whole unit at a time on whatever is furthest
+    // below its target and still affordable. Nothing is saved.
+    public async Task<ContributionPlanDto> SimulateContributionAsync(Guid userId, SimulateContributionRequestDto request)
+    {
+        var currency = request.Currency?.Trim().ToUpperInvariant();
+        if (currency is not ("USD" or "ARS"))
+            throw new ValidationException("Currency must be USD or ARS.");
+        if (request.Amount <= 0 || request.Amount > 1_000_000_000_000m)
+            throw new ValidationException("The amount must be greater than zero.");
+
+        var portfolio = await GetPortfolioAsync(userId);
+        var rate = portfolio.UsdRate;
+        if (rate <= 0)
+            throw new ValidationException("Set the dollar rate first.");
+        var amountUsd = currency == "ARS" ? request.Amount / rate : request.Amount;
+
+        var eligible = portfolio.Groups
+            .SelectMany(g => g.Holdings.Select(h => (Holding: h, Fractional: g.AllowFractional)))
+            .Where(x => x.Holding.TargetPercent > 0 && x.Holding.PriceUsd > 0)
+            .ToList();
+        var percentSum = eligible.Sum(x => x.Holding.TargetPercent);
+        var lines = new List<ContributionLineDto>();
+        if (percentSum <= 0)
+            return new ContributionPlanDto { AmountUsd = amountUsd, UsdRate = rate, InvestedUsd = 0, LeftoverUsd = amountUsd, Lines = lines };
+
+        var newTotal = portfolio.ValueUsd + amountUsd;
+        var gaps = eligible
+            .Select(x => Math.Max(0, newTotal * x.Holding.TargetPercent / percentSum - x.Holding.ValueUsd))
+            .ToArray();
+        var gapSum = gaps.Sum();
+        var scale = gapSum > amountUsd ? amountUsd / gapSum : 1;
+
+        var units = eligible
+            .Select((x, i) => Math.Round(gaps[i] * scale / x.Holding.PriceUsd, x.Fractional ? 2 : 0, MidpointRounding.ToZero))
+            .ToArray();
+        var leftover = amountUsd - eligible.Select((x, i) => units[i] * x.Holding.PriceUsd).Sum();
+
+        for (var guard = 0; guard < 1000; guard++)
+        {
+            var best = -1;
+            var bestGap = 0m;
+            for (var i = 0; i < eligible.Count; i++)
+            {
+                var (h, fractional) = eligible[i];
+                var remaining = gaps[i] - units[i] * h.PriceUsd;
+                if (!fractional && h.PriceUsd <= leftover && remaining > bestGap)
+                {
+                    best = i;
+                    bestGap = remaining;
+                }
+            }
+            if (best < 0)
+                break;
+            units[best] += 1;
+            leftover -= eligible[best].Holding.PriceUsd;
+        }
+
+        var invested = amountUsd - leftover;
+        var totalAfter = portfolio.ValueUsd + invested;
+        for (var i = 0; i < eligible.Count; i++)
+        {
+            if (units[i] <= 0)
+                continue;
+            var h = eligible[i].Holding;
+            var spent = units[i] * h.PriceUsd;
+            lines.Add(new ContributionLineDto
+            {
+                HoldingId = h.Id,
+                Ticker = h.Ticker,
+                Units = units[i],
+                AmountUsd = spent,
+                AmountArs = spent * rate,
+                TargetPercent = h.TargetPercent,
+                PercentAfter = totalAfter > 0 ? (h.ValueUsd + spent) / totalAfter * 100 : 0,
+            });
+        }
+
+        return new ContributionPlanDto
+        {
+            AmountUsd = amountUsd,
+            UsdRate = rate,
+            InvestedUsd = invested,
+            LeftoverUsd = Math.Max(leftover, 0),
+            Lines = lines.OrderByDescending(l => l.AmountUsd).ToList(),
+        };
+    }
+
     public async Task<InvestmentPortfolioDto> UpdatePortfolioAsync(Guid userId, UpdatePortfolioRequestDto request)
     {
         if (request.TargetAmountUsd < 0)
