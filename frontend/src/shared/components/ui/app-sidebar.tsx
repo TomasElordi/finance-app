@@ -27,6 +27,7 @@ import {
   Plug,
   Receipt,
   Target,
+  TrendingUp,
   User2,
   Users,
   Wallet,
@@ -69,6 +70,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     items: [
       { href: "/card-expenses", label: "Tarjeta de crédito", icon: CreditCard },
       { href: "/shared-expenses", label: "Gastos compartidos", icon: Users },
+      { href: "/investments", label: "Inversiones", icon: TrendingUp },
     ],
   },
 ];

@@ -27,6 +27,9 @@ public class AppDbContext : DbContext
     public DbSet<OAuthRefreshToken> OAuthRefreshTokens { get; set; }
     public DbSet<LoginFailure> LoginFailures { get; set; }
     public DbSet<RevokedToken> RevokedTokens { get; set; }
+    public DbSet<InvestmentPortfolio> InvestmentPortfolios { get; set; }
+    public DbSet<InvestmentGroup> InvestmentGroups { get; set; }
+    public DbSet<InvestmentHolding> InvestmentHoldings { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -139,6 +142,30 @@ public class AppDbContext : DbContext
             e.Property(t => t.Jti).HasMaxLength(64);
             e.HasIndex(t => t.Jti).IsUnique();
             e.HasIndex(t => t.ExpiresAt);
+        });
+
+        // Investments: standalone records per user. Groups can't be deleted while they have
+        // holdings (checked in InvestmentService).
+        modelBuilder.Entity<InvestmentPortfolio>(e =>
+        {
+            e.HasIndex(p => p.UserId).IsUnique();
+            e.HasOne(p => p.User).WithMany().HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<InvestmentGroup>(e =>
+        {
+            e.Property(g => g.Name).HasMaxLength(100);
+            e.Property(g => g.Color).HasMaxLength(20);
+            e.HasIndex(g => g.UserId);
+            e.HasOne(g => g.User).WithMany().HasForeignKey(g => g.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<InvestmentHolding>(e =>
+        {
+            e.Property(h => h.Ticker).HasMaxLength(20);
+            e.HasIndex(h => new { h.UserId, h.Ticker }).IsUnique();
+            e.HasOne(h => h.User).WithMany().HasForeignKey(h => h.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(h => h.Group).WithMany(g => g.Holdings).HasForeignKey(h => h.GroupId).OnDelete(DeleteBehavior.Restrict);
         });
     }
 }
