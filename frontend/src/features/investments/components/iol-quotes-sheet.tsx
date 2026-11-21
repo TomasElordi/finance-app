@@ -74,7 +74,7 @@ export default function IolQuotesSheet({ portfolio }: { portfolio: InvestmentPor
         <SheetHeader>
           <SheetTitle>Traer cotizaciones de IOL</SheetTitle>
           <SheetDescription>
-            {`Actualiza el precio de ${autoCount} inversiones y el dólar MEP.`}
+            {`Actualiza el precio de ${autoCount} inversiones y el dólar CCL.`}
           </SheetDescription>
         </SheetHeader>
         <div className="flex flex-col gap-4 p-4">
@@ -118,7 +118,7 @@ export default function IolQuotesSheet({ portfolio }: { portfolio: InvestmentPor
               <p>
                 {`Se actualizaron ${result.updated.length} precios. `}
                 {result.usdRate
-                  ? `Dólar MEP: ${formatMoney(result.usdRate, "ARS")}.`
+                  ? `Dólar CCL: ${formatMoney(result.usdRate, "ARS")}.`
                   : "No se pudo traer el dólar; quedó el anterior."}
               </p>
               {result.updated.length > 0 && (

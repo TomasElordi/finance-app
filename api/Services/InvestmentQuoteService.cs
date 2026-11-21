@@ -14,7 +14,7 @@ public interface IInvestmentQuoteService
 }
 
 // "Traer cotizaciones": last prices from InvertirOnline (BYMA, ARS) for the holdings with
-// AutoPrice, and the MEP dollar from dolarapi.com. IOL only offers a password grant whose
+// AutoPrice, and the CCL (contado con liquidación) dollar from dolarapi.com. IOL only offers a password grant whose
 // token can operate the whole account, so the credentials are used for this request alone:
 // nothing about them is stored, logged or returned.
 public class InvestmentQuoteService(
@@ -63,7 +63,7 @@ public class InvestmentQuoteService(
             }
         }));
 
-        var usdRate = await GetMepRateAsync();
+        var usdRate = await GetCclRateAsync();
         var portfolio = await investments.GetPortfolioAsync(userId);
         var found = results.Where(r => r.Price is > 0).ToList();
         if (found.Count > 0 || usdRate != null)
@@ -179,13 +179,13 @@ public class InvestmentQuoteService(
         }
     }
 
-    // MEP ("bolsa") sell rate: what a peso buys in dollars on the market.
-    private async Task<decimal?> GetMepRateAsync()
+    // CCL (contado con liquidación) sell rate: the dollar the user values the portfolio at.
+    private async Task<decimal?> GetCclRateAsync()
     {
         try
         {
             var client = httpClientFactory.CreateClient(DollarClient);
-            using var json = JsonDocument.Parse(await client.GetStringAsync("v1/dolares/bolsa"));
+            using var json = JsonDocument.Parse(await client.GetStringAsync("v1/dolares/contadoconliqui"));
             return json.RootElement.TryGetProperty("venta", out var v) && v.TryGetDecimal(out var rate) && rate > 0
                 ? rate
                 : null;
