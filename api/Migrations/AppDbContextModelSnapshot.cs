@@ -453,6 +453,18 @@ namespace api.Migrations
                         .HasColumnType("date")
                         .HasColumnName("date");
 
+                    b.Property<decimal>("IncomeUsd")
+                        .HasColumnType("numeric")
+                        .HasColumnName("income_usd");
+
+                    b.Property<decimal>("InvestedUsd")
+                        .HasColumnType("numeric")
+                        .HasColumnName("invested_usd");
+
+                    b.Property<decimal>("RealizedGainUsd")
+                        .HasColumnType("numeric")
+                        .HasColumnName("realized_gain_usd");
+
                     b.Property<decimal>("UsdRate")
                         .HasColumnType("numeric")
                         .HasColumnName("usd_rate");

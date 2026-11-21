@@ -574,6 +574,9 @@ public class InvestmentService(AppDbContext db) : IInvestmentService
         snapshot.UsdRate = portfolio.UsdRate;
         snapshot.ValueUsd = portfolio.ValueUsd;
         snapshot.CostUsd = portfolio.CostUsd;
+        snapshot.RealizedGainUsd = portfolio.RealizedGainUsd;
+        snapshot.IncomeUsd = portfolio.IncomeUsd;
+        snapshot.InvestedUsd = portfolio.InvestedUsd;
         db.InvestmentSnapshotGroups.AddRange(portfolio.Groups.Select(g => new InvestmentSnapshotGroup
         {
             Id = Guid.NewGuid(),
@@ -602,6 +605,9 @@ public class InvestmentService(AppDbContext db) : IInvestmentService
                 UsdRate = x.UsdRate,
                 ValueUsd = x.ValueUsd,
                 CostUsd = x.CostUsd,
+                RealizedGainUsd = x.RealizedGainUsd,
+                IncomeUsd = x.IncomeUsd,
+                InvestedUsd = x.InvestedUsd,
                 Groups = x.Groups
                     .OrderBy(g => g.Name)
                     .Select(g => new InvestmentSnapshotGroupDto

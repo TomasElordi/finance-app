@@ -171,6 +171,10 @@ export interface InvestmentSnapshot {
   usdRate: number;
   valueUsd: number;
   costUsd: number;
+  // Zero on snapshots taken before these were recorded (investedUsd 0 = unknown).
+  realizedGainUsd: number;
+  incomeUsd: number;
+  investedUsd: number;
   groups: { name: string; color: GroupColor; valueUsd: number; costUsd: number }[];
 }
 

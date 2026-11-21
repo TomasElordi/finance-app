@@ -120,6 +120,11 @@ public class InvestmentSnapshot
     public required decimal UsdRate { get; set; }
     public required decimal ValueUsd { get; set; }
     public required decimal CostUsd { get; set; }
+    // For the total return line. Snapshots taken before these existed have them at zero
+    // (InvestedUsd zero means "unknown": the cost is the best estimate then).
+    public decimal RealizedGainUsd { get; set; }
+    public decimal IncomeUsd { get; set; }
+    public decimal InvestedUsd { get; set; }
     public List<InvestmentSnapshotGroup> Groups { get; set; } = [];
 }
 
