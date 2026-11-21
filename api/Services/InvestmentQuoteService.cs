@@ -3,6 +3,7 @@ using System.Text.Json;
 using api.Data;
 using api.DTOs;
 using api.Exceptions;
+using api.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace api.Services;
@@ -25,6 +26,9 @@ public class InvestmentQuoteService(
     public const string IolClient = "iol";
     public const string DollarClient = "dolar";
     private const int MaxParallel = 5;
+    // Rejected IOL logins allowed per user in the window before we stop asking IOL.
+    internal const int MaxFailedLogins = 5;
+    internal static readonly TimeSpan FailureWindow = TimeSpan.FromMinutes(15);
 
     public async Task<QuotesResultDto> FetchFromIolAsync(Guid userId, IolQuotesRequestDto request)
     {
@@ -40,7 +44,8 @@ public class InvestmentQuoteService(
         if (holdings.Count == 0)
             throw new ValidationException("No holding has automatic prices enabled.");
 
-        var token = await GetIolTokenAsync(username, password);
+        await EnsureLoginAllowedAsync(userId);
+        var token = await GetIolTokenAsync(userId, username, password);
 
         var iol = httpClientFactory.CreateClient(IolClient);
         using var gate = new SemaphoreSlim(MaxParallel);
@@ -83,7 +88,35 @@ public class InvestmentQuoteService(
         };
     }
 
-    private async Task<string> GetIolTokenAsync(string username, string password)
+    // Checked before contacting IOL, so a run of wrong passwords stops here instead of
+    // piling up rejected logins on the user's broker account.
+    private async Task EnsureLoginAllowedAsync(Guid userId)
+    {
+        var since = DateTime.UtcNow - FailureWindow;
+        var failures = await db.IolLoginFailures
+            .Where(f => f.UserId == userId && f.CreatedAt > since)
+            .OrderBy(f => f.CreatedAt)
+            .Select(f => f.CreatedAt)
+            .ToListAsync();
+        if (failures.Count < MaxFailedLogins)
+            return;
+        // The oldest failure that still counts decides when a slot frees up.
+        var wait = failures[^MaxFailedLogins] + FailureWindow - DateTime.UtcNow;
+        var minutes = Math.Max(1, (int)Math.Ceiling(wait.TotalMinutes));
+        throw new TooManyAttemptsException(
+            $"Demasiados intentos fallidos con IOL. Para no bloquear tu cuenta, probá de nuevo en {minutes} minuto{(minutes == 1 ? "" : "s")}.");
+    }
+
+    private async Task RecordLoginFailureAsync(Guid userId)
+    {
+        var now = DateTime.UtcNow;
+        db.IolLoginFailures.Add(new IolLoginFailure { Id = Guid.NewGuid(), UserId = userId, CreatedAt = now });
+        await db.SaveChangesAsync();
+        // Old rows are useless; keep the table small.
+        await db.IolLoginFailures.Where(f => f.CreatedAt < now.AddDays(-1)).ExecuteDeleteAsync();
+    }
+
+    private async Task<string> GetIolTokenAsync(Guid userId, string username, string password)
     {
         var client = httpClientFactory.CreateClient(IolClient);
         using var content = new FormUrlEncodedContent(new Dictionary<string, string>
@@ -106,7 +139,10 @@ public class InvestmentQuoteService(
         using (response)
         {
             if (response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+            {
+                await RecordLoginFailureAsync(userId);
                 throw new ValidationException("IOL rechazó el usuario o la contraseña (o la cuenta no tiene la API habilitada).");
+            }
             if (!response.IsSuccessStatusCode)
             {
                 logger.LogWarning("IOL token request returned {Status}", (int)response.StatusCode);

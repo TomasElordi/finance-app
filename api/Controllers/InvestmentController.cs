@@ -147,6 +147,11 @@ public class InvestmentController(
         {
             return Conflict(ApiResponse<T>.Fail(ex.Message));
         }
+        catch (TooManyAttemptsException ex)
+        {
+            logger.LogWarning("Too many attempts on {Operation}", operation);
+            return StatusCode(StatusCodes.Status429TooManyRequests, ApiResponse<T>.Fail(ex.Message));
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Internal Server Error on {Operation}", operation);
