@@ -20,6 +20,7 @@ public class InvestmentGroupDto
     public required string Name { get; set; }
     public required string Color { get; set; }
     public required int SortOrder { get; set; }
+    public required bool AllowFractional { get; set; }
     public required List<InvestmentHoldingDto> Holdings { get; set; }
     public required decimal TargetPercent { get; set; }
     public required decimal TargetAmountUsd { get; set; }
@@ -59,6 +60,7 @@ public class InvestmentGroupRequestDto
 {
     public required string Name { get; set; }
     public required string Color { get; set; }
+    public bool AllowFractional { get; set; }
 }
 
 public class InvestmentHoldingRequestDto
@@ -81,4 +83,21 @@ public class InvestmentPriceDto
 {
     public required Guid HoldingId { get; set; }
     public required decimal PriceArs { get; set; }
+}
+
+public class InvestmentSnapshotDto
+{
+    public required DateOnly Date { get; set; }
+    public required decimal UsdRate { get; set; }
+    public required decimal ValueUsd { get; set; }
+    public required decimal CostUsd { get; set; }
+    public required List<InvestmentSnapshotGroupDto> Groups { get; set; }
+}
+
+public class InvestmentSnapshotGroupDto
+{
+    public required string Name { get; set; }
+    public required string Color { get; set; }
+    public required decimal ValueUsd { get; set; }
+    public required decimal CostUsd { get; set; }
 }

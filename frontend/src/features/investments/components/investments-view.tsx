@@ -2,16 +2,24 @@
 
 import { useState } from "react";
 import { AlertTriangle, TrendingUp } from "lucide-react";
-import { InvestmentPortfolio } from "../types/investment";
+import { InvestmentPortfolio, InvestmentSnapshot } from "../types/investment";
 import { DisplayCurrency, formatPercent, targetIsOff } from "../utils/format";
+import ContributionSheet from "./contribution-sheet";
 import GroupSheet from "./group-sheet";
 import HoldingSheet from "./holding-sheet";
+import InvestmentsHistoryChart from "./investments-history-chart";
 import InvestmentsSummary from "./investments-summary";
 import InvestmentsTable from "./investments-table";
 import PortfolioSheet from "./portfolio-sheet";
 import PricesSheet from "./prices-sheet";
 
-export default function InvestmentsView({ portfolio }: { portfolio: InvestmentPortfolio }) {
+export default function InvestmentsView({
+  portfolio,
+  history,
+}: {
+  portfolio: InvestmentPortfolio;
+  history: InvestmentSnapshot[];
+}) {
   const [currency, setCurrency] = useState<DisplayCurrency>("USD");
   // Everything comes in USD; ARS is shown at today's rate.
   const convert = (usd: number) => (currency === "ARS" ? usd * portfolio.usdRate : usd);
@@ -41,6 +49,7 @@ export default function InvestmentsView({ portfolio }: { portfolio: InvestmentPo
           </div>
           <PortfolioSheet portfolio={portfolio} />
           <PricesSheet portfolio={portfolio} />
+          <ContributionSheet portfolio={portfolio} />
           <GroupSheet />
           <HoldingSheet groups={portfolio.groups} usdRate={portfolio.usdRate} />
         </div>
@@ -62,6 +71,7 @@ export default function InvestmentsView({ portfolio }: { portfolio: InvestmentPo
       ) : (
         <>
           <InvestmentsSummary portfolio={portfolio} currency={currency} convert={convert} />
+          <InvestmentsHistoryChart history={history} currency={currency} />
           {targetOff && (
             <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
               <AlertTriangle className="mt-0.5 size-4 shrink-0" />

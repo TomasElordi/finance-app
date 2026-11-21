@@ -20,6 +20,13 @@ public class InvestmentController(ILogger<InvestmentController> logger, IInvestm
         Handle<InvestmentPortfolioDto>("GET investments", async () =>
             Ok(ApiResponse<InvestmentPortfolioDto>.Ok(await investmentService.GetPortfolioAsync(UserId))));
 
+    // months <= 0 returns the whole history.
+    [HttpGet("history")]
+    [ProducesResponseType(typeof(ApiResponse<List<InvestmentSnapshotDto>>), StatusCodes.Status200OK)]
+    public Task<IActionResult> GetHistory([FromQuery] int months = 0) =>
+        Handle<List<InvestmentSnapshotDto>>("GET investment history", async () =>
+            Ok(ApiResponse<List<InvestmentSnapshotDto>>.Ok(await investmentService.GetHistoryAsync(UserId, months))));
+
     [HttpPut("portfolio")]
     [ProducesResponseType(typeof(ApiResponse<InvestmentPortfolioDto>), StatusCodes.Status200OK)]
     public Task<IActionResult> UpdatePortfolio([FromBody] UpdatePortfolioRequestDto request) =>

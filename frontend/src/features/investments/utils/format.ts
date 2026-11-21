@@ -29,15 +29,15 @@ export function gainClass(value: number): string {
 }
 
 // Full class names so Tailwind picks them up.
-export const GROUP_COLORS: Record<GroupColor, { label: string; row: string; dot: string }> = {
-  amber: { label: "Amarillo", row: "bg-amber-50 dark:bg-amber-950/30", dot: "bg-amber-400" },
-  slate: { label: "Gris", row: "bg-slate-100 dark:bg-slate-800/40", dot: "bg-slate-400" },
-  green: { label: "Verde", row: "bg-green-50 dark:bg-green-950/30", dot: "bg-green-500" },
-  red: { label: "Rojo", row: "bg-red-50 dark:bg-red-950/30", dot: "bg-red-400" },
-  blue: { label: "Azul", row: "bg-blue-50 dark:bg-blue-950/30", dot: "bg-blue-500" },
-  purple: { label: "Violeta", row: "bg-purple-50 dark:bg-purple-950/30", dot: "bg-purple-500" },
-  teal: { label: "Turquesa", row: "bg-teal-50 dark:bg-teal-950/30", dot: "bg-teal-500" },
-  pink: { label: "Rosa", row: "bg-pink-50 dark:bg-pink-950/30", dot: "bg-pink-400" },
+export const GROUP_COLORS: Record<GroupColor, { label: string; row: string; dot: string; chart: string }> = {
+  amber: { label: "Amarillo", row: "bg-amber-50 dark:bg-amber-950/30", dot: "bg-amber-400", chart: "#f59e0b" },
+  slate: { label: "Gris", row: "bg-slate-100 dark:bg-slate-800/40", dot: "bg-slate-400", chart: "#94a3b8" },
+  green: { label: "Verde", row: "bg-green-50 dark:bg-green-950/30", dot: "bg-green-500", chart: "#22c55e" },
+  red: { label: "Rojo", row: "bg-red-50 dark:bg-red-950/30", dot: "bg-red-400", chart: "#f87171" },
+  blue: { label: "Azul", row: "bg-blue-50 dark:bg-blue-950/30", dot: "bg-blue-500", chart: "#3b82f6" },
+  purple: { label: "Violeta", row: "bg-purple-50 dark:bg-purple-950/30", dot: "bg-purple-500", chart: "#a855f7" },
+  teal: { label: "Turquesa", row: "bg-teal-50 dark:bg-teal-950/30", dot: "bg-teal-500", chart: "#14b8a6" },
+  pink: { label: "Rosa", row: "bg-pink-50 dark:bg-pink-950/30", dot: "bg-pink-400", chart: "#f472b6" },
 };
 
 // Target percents are usually typed with two decimals (1.87 + 1.88...), so a sum like

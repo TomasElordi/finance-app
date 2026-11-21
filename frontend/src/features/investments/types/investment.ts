@@ -23,6 +23,7 @@ export interface InvestmentGroup {
   name: string;
   color: GroupColor;
   sortOrder: number;
+  allowFractional: boolean;
   holdings: InvestmentHolding[];
   targetPercent: number;
   targetAmountUsd: number;
@@ -48,6 +49,7 @@ export interface InvestmentPortfolio {
 export interface InvestmentGroupInput {
   name: string;
   color: GroupColor;
+  allowFractional: boolean;
 }
 
 export interface InvestmentHoldingInput {
@@ -75,3 +77,11 @@ export const EMPTY_PORTFOLIO: InvestmentPortfolio = {
   gainUsd: 0,
   gainPercent: 0,
 };
+
+export interface InvestmentSnapshot {
+  date: string; // yyyy-MM-dd
+  usdRate: number;
+  valueUsd: number;
+  costUsd: number;
+  groups: { name: string; color: GroupColor; valueUsd: number; costUsd: number }[];
+}

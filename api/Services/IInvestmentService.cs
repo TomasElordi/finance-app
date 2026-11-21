@@ -5,6 +5,7 @@ namespace api.Services;
 public interface IInvestmentService
 {
     Task<InvestmentPortfolioDto> GetPortfolioAsync(Guid userId);
+    Task<List<InvestmentSnapshotDto>> GetHistoryAsync(Guid userId, int months);
     Task<InvestmentPortfolioDto> UpdatePortfolioAsync(Guid userId, UpdatePortfolioRequestDto request);
     Task<InvestmentPortfolioDto> UpdatePricesAsync(Guid userId, UpdateInvestmentPricesRequestDto request);
     Task<InvestmentGroupDto> CreateGroupAsync(Guid userId, InvestmentGroupRequestDto request);

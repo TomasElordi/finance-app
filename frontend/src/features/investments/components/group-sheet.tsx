@@ -27,6 +27,7 @@ export default function GroupSheet({ group }: GroupSheetProps) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [color, setColor] = useState<GroupColor>("blue");
+  const [allowFractional, setAllowFractional] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -34,6 +35,7 @@ export default function GroupSheet({ group }: GroupSheetProps) {
     if (next) {
       setName(group?.name ?? "");
       setColor(group?.color ?? "blue");
+      setAllowFractional(group?.allowFractional ?? false);
       setError(null);
     }
     setOpen(next);
@@ -43,7 +45,7 @@ export default function GroupSheet({ group }: GroupSheetProps) {
     if (!name.trim()) return setError("Ingresá un nombre.");
     setError(null);
     startTransition(async () => {
-      const result = await saveGroupAction({ name: name.trim(), color }, group?.id);
+      const result = await saveGroupAction({ name: name.trim(), color, allowFractional }, group?.id);
       if (result.status === "error") return setError(result.message);
       setOpen(false);
     });
@@ -107,6 +109,20 @@ export default function GroupSheet({ group }: GroupSheetProps) {
               ))}
             </div>
           </Field>
+          <label className="flex items-start gap-3 rounded-lg border p-3 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5 size-4 accent-primary"
+              checked={allowFractional}
+              onChange={(e) => setAllowFractional(e.target.checked)}
+            />
+            <span className="flex flex-col gap-0.5">
+              <span className="font-medium">Permite fracciones</span>
+              <span className="text-muted-foreground">
+                Para bonos. Si no, la calculadora de aporte sugiere unidades enteras.
+              </span>
+            </span>
+          </label>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Separator />
           <Button onClick={handleSave} disabled={isPending}>

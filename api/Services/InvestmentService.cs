@@ -36,8 +36,7 @@ public class InvestmentService(AppDbContext db) : IInvestmentService
         portfolio.TargetAmountUsd = request.TargetAmountUsd;
         portfolio.UsdRate = request.UsdRate;
         portfolio.UpdatedAt = DateTime.UtcNow;
-        await db.SaveChangesAsync();
-        return await GetPortfolioAsync(userId);
+        return await SaveAndSnapshotAsync(userId);
     }
 
     public async Task<InvestmentPortfolioDto> UpdatePricesAsync(Guid userId, UpdateInvestmentPricesRequestDto request)
@@ -68,8 +67,7 @@ public class InvestmentService(AppDbContext db) : IInvestmentService
         var portfolio = await GetOrCreatePortfolioAsync(userId);
         portfolio.UsdRate = request.UsdRate;
         portfolio.UpdatedAt = now;
-        await db.SaveChangesAsync();
-        return await GetPortfolioAsync(userId);
+        return await SaveAndSnapshotAsync(userId);
     }
 
     public async Task<InvestmentGroupDto> CreateGroupAsync(Guid userId, InvestmentGroupRequestDto request)
@@ -88,10 +86,11 @@ public class InvestmentService(AppDbContext db) : IInvestmentService
             Name = name,
             Color = color,
             SortOrder = existing.Count == 0 ? 0 : existing.Max(g => g.SortOrder) + 1,
+            AllowFractional = request.AllowFractional,
         };
         db.InvestmentGroups.Add(group);
-        await db.SaveChangesAsync();
-        return await GetGroupDtoAsync(userId, group.Id);
+        var portfolio = await SaveAndSnapshotAsync(userId);
+        return portfolio.Groups.First(g => g.Id == group.Id);
     }
 
     public async Task<InvestmentGroupDto> UpdateGroupAsync(Guid userId, Guid groupId, InvestmentGroupRequestDto request)
@@ -106,8 +105,9 @@ public class InvestmentService(AppDbContext db) : IInvestmentService
 
         group.Name = name;
         group.Color = color;
-        await db.SaveChangesAsync();
-        return await GetGroupDtoAsync(userId, group.Id);
+        group.AllowFractional = request.AllowFractional;
+        var portfolio = await SaveAndSnapshotAsync(userId);
+        return portfolio.Groups.First(g => g.Id == group.Id);
     }
 
     public async Task DeleteGroupAsync(Guid userId, Guid groupId)
@@ -117,7 +117,7 @@ public class InvestmentService(AppDbContext db) : IInvestmentService
         if (await db.InvestmentHoldings.AnyAsync(h => h.GroupId == groupId))
             throw new ConflictException("The group still has holdings. Delete or move them first.");
         db.InvestmentGroups.Remove(group);
-        await db.SaveChangesAsync();
+        await SaveAndSnapshotAsync(userId);
     }
 
     public async Task<InvestmentHoldingDto> CreateHoldingAsync(Guid userId, InvestmentHoldingRequestDto request)
@@ -139,8 +139,7 @@ public class InvestmentService(AppDbContext db) : IInvestmentService
             PriceUpdatedAt = DateTime.UtcNow,
         };
         db.InvestmentHoldings.Add(holding);
-        await db.SaveChangesAsync();
-        return await GetHoldingDtoAsync(userId, holding.Id);
+        return HoldingOf(await SaveAndSnapshotAsync(userId), holding.Id);
     }
 
     public async Task<InvestmentHoldingDto> UpdateHoldingAsync(Guid userId, Guid holdingId, InvestmentHoldingRequestDto request)
@@ -157,8 +156,7 @@ public class InvestmentService(AppDbContext db) : IInvestmentService
         holding.Quantity = request.Quantity;
         holding.AverageCostUsd = request.AverageCostUsd;
         holding.PriceArs = request.PriceArs;
-        await db.SaveChangesAsync();
-        return await GetHoldingDtoAsync(userId, holding.Id);
+        return HoldingOf(await SaveAndSnapshotAsync(userId), holding.Id);
     }
 
     public async Task DeleteHoldingAsync(Guid userId, Guid holdingId)
@@ -166,7 +164,7 @@ public class InvestmentService(AppDbContext db) : IInvestmentService
         var holding = await db.InvestmentHoldings.FirstOrDefaultAsync(h => h.Id == holdingId && h.UserId == userId)
             ?? throw new NotFoundException("Holding not found.");
         db.InvestmentHoldings.Remove(holding);
-        await db.SaveChangesAsync();
+        await SaveAndSnapshotAsync(userId);
     }
 
     private async Task<InvestmentPortfolio> GetOrCreatePortfolioAsync(Guid userId)
@@ -218,11 +216,95 @@ public class InvestmentService(AppDbContext db) : IInvestmentService
         return ticker;
     }
 
-    private async Task<InvestmentGroupDto> GetGroupDtoAsync(Guid userId, Guid groupId) =>
-        (await GetPortfolioAsync(userId)).Groups.First(g => g.Id == groupId);
+    private static InvestmentHoldingDto HoldingOf(InvestmentPortfolioDto portfolio, Guid holdingId) =>
+        portfolio.Groups.SelectMany(g => g.Holdings).First(h => h.Id == holdingId);
 
-    private async Task<InvestmentHoldingDto> GetHoldingDtoAsync(Guid userId, Guid holdingId) =>
-        (await GetPortfolioAsync(userId)).Groups.SelectMany(g => g.Holdings).First(h => h.Id == holdingId);
+    // Argentina has no DST, so a fixed offset gives its calendar day without relying on
+    // the host's time zone database.
+    private static DateOnly TodayInArgentina() =>
+        DateOnly.FromDateTime(DateTime.UtcNow.AddHours(-3));
+
+    private async Task<InvestmentPortfolioDto> SaveAndSnapshotAsync(Guid userId)
+    {
+        await db.SaveChangesAsync();
+        var portfolio = await GetPortfolioAsync(userId);
+        await RecordSnapshotAsync(userId, portfolio);
+        return portfolio;
+    }
+
+    // One snapshot per day: a later change the same day replaces it. Without a dollar rate
+    // there's no USD value to record yet.
+    private async Task RecordSnapshotAsync(Guid userId, InvestmentPortfolioDto portfolio)
+    {
+        if (portfolio.UsdRate <= 0)
+            return;
+
+        var today = TodayInArgentina();
+        var snapshot = await db.InvestmentSnapshots
+            .Include(x => x.Groups)
+            .FirstOrDefaultAsync(x => x.UserId == userId && x.Date == today);
+        if (snapshot == null)
+        {
+            snapshot = new InvestmentSnapshot
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                Date = today,
+                UsdRate = 0,
+                ValueUsd = 0,
+                CostUsd = 0,
+            };
+            db.InvestmentSnapshots.Add(snapshot);
+        }
+        else
+        {
+            db.InvestmentSnapshotGroups.RemoveRange(snapshot.Groups);
+        }
+
+        snapshot.UsdRate = portfolio.UsdRate;
+        snapshot.ValueUsd = portfolio.ValueUsd;
+        snapshot.CostUsd = portfolio.CostUsd;
+        db.InvestmentSnapshotGroups.AddRange(portfolio.Groups.Select(g => new InvestmentSnapshotGroup
+        {
+            Id = Guid.NewGuid(),
+            SnapshotId = snapshot.Id,
+            Name = g.Name,
+            Color = g.Color,
+            ValueUsd = g.ValueUsd,
+            CostUsd = g.CostUsd,
+        }));
+        await db.SaveChangesAsync();
+    }
+
+    public async Task<List<InvestmentSnapshotDto>> GetHistoryAsync(Guid userId, int months)
+    {
+        var query = db.InvestmentSnapshots.AsNoTracking().Where(x => x.UserId == userId);
+        if (months > 0)
+        {
+            var from = TodayInArgentina().AddMonths(-Math.Min(months, 1200));
+            query = query.Where(x => x.Date >= from);
+        }
+        return await query
+            .OrderBy(x => x.Date)
+            .Select(x => new InvestmentSnapshotDto
+            {
+                Date = x.Date,
+                UsdRate = x.UsdRate,
+                ValueUsd = x.ValueUsd,
+                CostUsd = x.CostUsd,
+                Groups = x.Groups
+                    .OrderBy(g => g.Name)
+                    .Select(g => new InvestmentSnapshotGroupDto
+                    {
+                        Name = g.Name,
+                        Color = g.Color,
+                        ValueUsd = g.ValueUsd,
+                        CostUsd = g.CostUsd,
+                    })
+                    .ToList(),
+            })
+            .ToListAsync();
+    }
 
     // Every derived value (USD price, value, gains, actual share) is computed here, never stored.
     private static InvestmentPortfolioDto BuildPortfolio(InvestmentPortfolio? portfolio, List<InvestmentGroup> groups)
@@ -273,6 +355,7 @@ public class InvestmentService(AppDbContext db) : IInvestmentService
                 Name = g.Name,
                 Color = g.Color,
                 SortOrder = g.SortOrder,
+                AllowFractional = g.AllowFractional,
                 Holdings = holdings,
                 TargetPercent = gTarget,
                 TargetAmountUsd = target * gTarget / 100,

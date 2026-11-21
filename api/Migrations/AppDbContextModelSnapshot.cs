@@ -248,6 +248,10 @@ namespace api.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<bool>("AllowFractional")
+                        .HasColumnType("boolean")
+                        .HasColumnName("allow_fractional");
+
                     b.Property<string>("Color")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -362,6 +366,83 @@ namespace api.Migrations
                         .HasDatabaseName("ix_investment_portfolios_user_id");
 
                     b.ToTable("investment_portfolios", (string)null);
+                });
+
+            modelBuilder.Entity("api.Models.InvestmentSnapshot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("CostUsd")
+                        .HasColumnType("numeric")
+                        .HasColumnName("cost_usd");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date")
+                        .HasColumnName("date");
+
+                    b.Property<decimal>("UsdRate")
+                        .HasColumnType("numeric")
+                        .HasColumnName("usd_rate");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<decimal>("ValueUsd")
+                        .HasColumnType("numeric")
+                        .HasColumnName("value_usd");
+
+                    b.HasKey("Id")
+                        .HasName("pk_investment_snapshots");
+
+                    b.HasIndex("UserId", "Date")
+                        .IsUnique()
+                        .HasDatabaseName("ix_investment_snapshots_user_id_date");
+
+                    b.ToTable("investment_snapshots", (string)null);
+                });
+
+            modelBuilder.Entity("api.Models.InvestmentSnapshotGroup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("color");
+
+                    b.Property<decimal>("CostUsd")
+                        .HasColumnType("numeric")
+                        .HasColumnName("cost_usd");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("SnapshotId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("snapshot_id");
+
+                    b.Property<decimal>("ValueUsd")
+                        .HasColumnType("numeric")
+                        .HasColumnName("value_usd");
+
+                    b.HasKey("Id")
+                        .HasName("pk_investment_snapshot_groups");
+
+                    b.HasIndex("SnapshotId")
+                        .HasDatabaseName("ix_investment_snapshot_groups_snapshot_id");
+
+                    b.ToTable("investment_snapshot_groups", (string)null);
                 });
 
             modelBuilder.Entity("api.Models.LoginFailure", b =>
@@ -1004,6 +1085,30 @@ namespace api.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("api.Models.InvestmentSnapshot", b =>
+                {
+                    b.HasOne("api.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_investment_snapshots_users_user_id");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("api.Models.InvestmentSnapshotGroup", b =>
+                {
+                    b.HasOne("api.Models.InvestmentSnapshot", "Snapshot")
+                        .WithMany("Groups")
+                        .HasForeignKey("SnapshotId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_investment_snapshot_groups_investment_snapshots_snapshot_id");
+
+                    b.Navigation("Snapshot");
+                });
+
             modelBuilder.Entity("api.Models.OAuthAuthorizationCode", b =>
                 {
                     b.HasOne("api.Models.OAuthClient", "Client")
@@ -1191,6 +1296,11 @@ namespace api.Migrations
             modelBuilder.Entity("api.Models.InvestmentGroup", b =>
                 {
                     b.Navigation("Holdings");
+                });
+
+            modelBuilder.Entity("api.Models.InvestmentSnapshot", b =>
+                {
+                    b.Navigation("Groups");
                 });
 
             modelBuilder.Entity("api.Models.SharedExpense", b =>
