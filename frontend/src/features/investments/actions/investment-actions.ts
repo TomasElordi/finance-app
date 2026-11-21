@@ -7,7 +7,11 @@ import { ApiResponse } from "@/src/shared/types/api";
 import { ActionState } from "@/src/shared/types/action-state";
 import {
   ContributionPlan,
+  IncomeInput,
+  InvestmentActivity,
   InvestmentGroupInput,
+  QuotesResult,
+  TradeInput,
   InvestmentHoldingInput,
   InvestmentPricesInput,
 } from "../types/investment";
@@ -76,6 +80,57 @@ export async function simulateContributionAction(
       return { status: "error", message: response?.message ?? "No se pudo simular" };
     }
     return { status: "success", plan: response.data };
+  } catch {
+    return { status: "error", message: "Error de conexión" };
+  }
+}
+
+export async function addTradeAction(holdingId: string, input: TradeInput) {
+  return send("/investments/trades", "POST", { ...input, holdingId });
+}
+
+export async function deleteTradeAction(id: string) {
+  return send(apiPath`/investments/trades/${id}`, "DELETE");
+}
+
+export async function addIncomeAction(input: IncomeInput) {
+  return send("/investments/incomes", "POST", input);
+}
+
+export async function deleteIncomeAction(id: string) {
+  return send(apiPath`/investments/incomes/${id}`, "DELETE");
+}
+
+// Read on demand when a holding's activity sheet opens (not part of the page data).
+export async function getActivityAction(holdingId: string): Promise<InvestmentActivity | null> {
+  try {
+    const response = await serverFetch<ApiResponse<InvestmentActivity>>(
+      apiPath`/investments/activity?holdingId=${holdingId}`,
+      { auth: true },
+    );
+    return response?.success ? response.data : null;
+  } catch {
+    return null;
+  }
+}
+
+// The IOL credentials go straight to our API for this one request; nothing keeps them.
+export async function fetchIolQuotesAction(
+  username: string,
+  password: string,
+): Promise<{ status: "success"; result: QuotesResult } | { status: "error"; message: string }> {
+  try {
+    const response = await serverFetch<ApiResponse<QuotesResult>>("/investments/quotes/iol", {
+      method: "POST",
+      auth: true,
+      body: JSON.stringify({ username, password }),
+    });
+    if (!response?.success || !response.data) {
+      return { status: "error", message: response?.message ?? "No se pudieron traer las cotizaciones" };
+    }
+    revalidateTag("investments", {});
+    refresh();
+    return { status: "success", result: response.data };
   } catch {
     return { status: "error", message: "Error de conexión" };
   }

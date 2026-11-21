@@ -45,3 +45,13 @@ export const GROUP_COLORS: Record<GroupColor, { label: string; row: string; dot:
 export function targetIsOff(targetPercent: number): boolean {
   return Math.abs(targetPercent - 100) > 0.05;
 }
+
+// Argentina has no DST: UTC-3 gives its calendar day, matching the API.
+export function todayInArgentina(): string {
+  return new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+export function formatDate(date: string): string {
+  const [y, m, d] = date.split("-");
+  return `${d}/${m}/${y}`;
+}

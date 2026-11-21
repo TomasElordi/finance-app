@@ -288,6 +288,12 @@ namespace api.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<bool>("AutoPrice")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("auto_price");
+
                     b.Property<decimal>("AverageCostUsd")
                         .HasColumnType("numeric")
                         .HasColumnName("average_cost_usd");
@@ -295,6 +301,15 @@ namespace api.Migrations
                     b.Property<Guid>("GroupId")
                         .HasColumnType("uuid")
                         .HasColumnName("group_id");
+
+                    b.Property<decimal>("InvestedUsd")
+                        .HasColumnType("numeric")
+                        .HasColumnName("invested_usd");
+
+                    b.Property<string>("MarketSymbol")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("market_symbol");
 
                     b.Property<decimal>("PriceArs")
                         .HasColumnType("numeric")
@@ -307,6 +322,10 @@ namespace api.Migrations
                     b.Property<decimal>("Quantity")
                         .HasColumnType("numeric")
                         .HasColumnName("quantity");
+
+                    b.Property<decimal>("RealizedGainUsd")
+                        .HasColumnType("numeric")
+                        .HasColumnName("realized_gain_usd");
 
                     b.Property<decimal>("TargetPercent")
                         .HasColumnType("numeric")
@@ -333,6 +352,57 @@ namespace api.Migrations
                         .HasDatabaseName("ix_investment_holdings_user_id_ticker");
 
                     b.ToTable("investment_holdings", (string)null);
+                });
+
+            modelBuilder.Entity("api.Models.InvestmentIncome", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal?>("AmountArs")
+                        .HasColumnType("numeric")
+                        .HasColumnName("amount_ars");
+
+                    b.Property<decimal>("AmountUsd")
+                        .HasColumnType("numeric")
+                        .HasColumnName("amount_usd");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date")
+                        .HasColumnName("date");
+
+                    b.Property<Guid>("HoldingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("holding_id");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer")
+                        .HasColumnName("type");
+
+                    b.Property<decimal?>("UsdRate")
+                        .HasColumnType("numeric")
+                        .HasColumnName("usd_rate");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_investment_incomes");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_investment_incomes_user_id");
+
+                    b.HasIndex("HoldingId", "Date")
+                        .HasDatabaseName("ix_investment_incomes_holding_id_date");
+
+                    b.ToTable("investment_incomes", (string)null);
                 });
 
             modelBuilder.Entity("api.Models.InvestmentPortfolio", b =>
@@ -443,6 +513,73 @@ namespace api.Migrations
                         .HasDatabaseName("ix_investment_snapshot_groups_snapshot_id");
 
                     b.ToTable("investment_snapshot_groups", (string)null);
+                });
+
+            modelBuilder.Entity("api.Models.InvestmentTrade", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date")
+                        .HasColumnName("date");
+
+                    b.Property<decimal>("FeeArs")
+                        .HasColumnType("numeric")
+                        .HasColumnName("fee_ars");
+
+                    b.Property<decimal>("FeeUsd")
+                        .HasColumnType("numeric")
+                        .HasColumnName("fee_usd");
+
+                    b.Property<Guid>("HoldingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("holding_id");
+
+                    b.Property<bool>("IsInitial")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_initial");
+
+                    b.Property<decimal?>("PriceArs")
+                        .HasColumnType("numeric")
+                        .HasColumnName("price_ars");
+
+                    b.Property<decimal>("PriceUsd")
+                        .HasColumnType("numeric")
+                        .HasColumnName("price_usd");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("numeric")
+                        .HasColumnName("quantity");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer")
+                        .HasColumnName("type");
+
+                    b.Property<decimal?>("UsdRate")
+                        .HasColumnType("numeric")
+                        .HasColumnName("usd_rate");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_investment_trades");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_investment_trades_user_id");
+
+                    b.HasIndex("HoldingId", "Date")
+                        .HasDatabaseName("ix_investment_trades_holding_id_date");
+
+                    b.ToTable("investment_trades", (string)null);
                 });
 
             modelBuilder.Entity("api.Models.LoginFailure", b =>
@@ -1073,6 +1210,18 @@ namespace api.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("api.Models.InvestmentIncome", b =>
+                {
+                    b.HasOne("api.Models.InvestmentHolding", "Holding")
+                        .WithMany("Incomes")
+                        .HasForeignKey("HoldingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_investment_incomes_investment_holdings_holding_id");
+
+                    b.Navigation("Holding");
+                });
+
             modelBuilder.Entity("api.Models.InvestmentPortfolio", b =>
                 {
                     b.HasOne("api.Models.User", "User")
@@ -1107,6 +1256,18 @@ namespace api.Migrations
                         .HasConstraintName("fk_investment_snapshot_groups_investment_snapshots_snapshot_id");
 
                     b.Navigation("Snapshot");
+                });
+
+            modelBuilder.Entity("api.Models.InvestmentTrade", b =>
+                {
+                    b.HasOne("api.Models.InvestmentHolding", "Holding")
+                        .WithMany("Trades")
+                        .HasForeignKey("HoldingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_investment_trades_investment_holdings_holding_id");
+
+                    b.Navigation("Holding");
                 });
 
             modelBuilder.Entity("api.Models.OAuthAuthorizationCode", b =>
@@ -1296,6 +1457,13 @@ namespace api.Migrations
             modelBuilder.Entity("api.Models.InvestmentGroup", b =>
                 {
                     b.Navigation("Holdings");
+                });
+
+            modelBuilder.Entity("api.Models.InvestmentHolding", b =>
+                {
+                    b.Navigation("Incomes");
+
+                    b.Navigation("Trades");
                 });
 
             modelBuilder.Entity("api.Models.InvestmentSnapshot", b =>

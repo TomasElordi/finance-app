@@ -2,6 +2,7 @@ using api.Data;
 using api.DTOs;
 using api.Exceptions;
 using api.Models;
+using api.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace api.Services;
@@ -23,7 +24,12 @@ public class InvestmentService(AppDbContext db) : IInvestmentService
             .Include(g => g.Holdings)
             .OrderBy(g => g.SortOrder)
             .ToListAsync();
-        return BuildPortfolio(portfolio, groups);
+        var income = await db.InvestmentIncomes.AsNoTracking()
+            .Where(i => i.UserId == userId)
+            .GroupBy(i => i.HoldingId)
+            .Select(g => new { HoldingId = g.Key, Total = g.Sum(i => i.AmountUsd) })
+            .ToDictionaryAsync(x => x.HoldingId, x => x.Total);
+        return BuildPortfolio(portfolio, groups, income);
     }
 
     // Buy-only rebalance: each holding's target is (current value + contribution) × its share
@@ -222,12 +228,21 @@ public class InvestmentService(AppDbContext db) : IInvestmentService
             UserId = userId,
             GroupId = request.GroupId,
             Ticker = ticker,
+            MarketSymbol = NormalizeSymbol(request.MarketSymbol),
+            AutoPrice = request.AutoPrice,
             TargetPercent = request.TargetPercent,
-            Quantity = request.Quantity,
-            AverageCostUsd = request.AverageCostUsd,
             PriceArs = request.PriceArs,
             PriceUpdatedAt = DateTime.UtcNow,
+            Quantity = 0,
+            AverageCostUsd = 0,
         };
+        if (request.InitialTrade is { } first)
+        {
+            if (first.Type != InvestmentTradeType.Buy)
+                throw new ValidationException("The first trade of a new holding must be a buy.");
+            holding.Trades.Add(NewTrade(userId, holding.Id, first));
+            Recalculate(holding);
+        }
         db.InvestmentHoldings.Add(holding);
         return HoldingOf(await SaveAndSnapshotAsync(userId), holding.Id);
     }
@@ -242,11 +257,209 @@ public class InvestmentService(AppDbContext db) : IInvestmentService
             holding.PriceUpdatedAt = DateTime.UtcNow;
         holding.GroupId = request.GroupId;
         holding.Ticker = ticker;
+        holding.MarketSymbol = NormalizeSymbol(request.MarketSymbol);
+        holding.AutoPrice = request.AutoPrice;
         holding.TargetPercent = request.TargetPercent;
-        holding.Quantity = request.Quantity;
-        holding.AverageCostUsd = request.AverageCostUsd;
         holding.PriceArs = request.PriceArs;
         return HoldingOf(await SaveAndSnapshotAsync(userId), holding.Id);
+    }
+
+    public async Task<InvestmentActivityDto> GetActivityAsync(Guid userId, Guid? holdingId)
+    {
+        var trades = await db.InvestmentTrades.AsNoTracking()
+            .Where(t => t.UserId == userId && (holdingId == null || t.HoldingId == holdingId))
+            .OrderByDescending(t => t.Date).ThenByDescending(t => t.CreatedAt)
+            .Take(1000)
+            .Select(t => new InvestmentTradeDto
+            {
+                Id = t.Id,
+                HoldingId = t.HoldingId,
+                Ticker = t.Holding.Ticker,
+                Date = t.Date,
+                Type = t.Type,
+                Quantity = t.Quantity,
+                PriceArs = t.PriceArs,
+                UsdRate = t.UsdRate,
+                PriceUsd = t.PriceUsd,
+                FeeArs = t.FeeArs,
+                FeeUsd = t.FeeUsd,
+                IsInitial = t.IsInitial,
+            })
+            .ToListAsync();
+        var incomes = await db.InvestmentIncomes.AsNoTracking()
+            .Where(i => i.UserId == userId && (holdingId == null || i.HoldingId == holdingId))
+            .OrderByDescending(i => i.Date).ThenByDescending(i => i.CreatedAt)
+            .Take(1000)
+            .Select(i => new InvestmentIncomeDto
+            {
+                Id = i.Id,
+                HoldingId = i.HoldingId,
+                Ticker = i.Holding.Ticker,
+                Date = i.Date,
+                Type = i.Type,
+                AmountUsd = i.AmountUsd,
+                AmountArs = i.AmountArs,
+                UsdRate = i.UsdRate,
+            })
+            .ToListAsync();
+        return new InvestmentActivityDto { Trades = trades, Incomes = incomes };
+    }
+
+    private const int MaxTradesPerHolding = 2000;
+
+    public async Task<InvestmentHoldingDto> AddTradeAsync(Guid userId, InvestmentTradeRequestDto request)
+    {
+        var holding = await LoadHoldingWithTradesAsync(userId, request.HoldingId);
+        if (holding.Trades.Count >= MaxTradesPerHolding)
+            throw new ValidationException($"Too many trades for {holding.Ticker} (max {MaxTradesPerHolding}).");
+        var trade = NewTrade(userId, holding.Id, request);
+        holding.Trades.Add(trade);
+        Recalculate(holding);
+        db.InvestmentTrades.Add(trade);
+        return HoldingOf(await SaveAndSnapshotAsync(userId), holding.Id);
+    }
+
+    public async Task<InvestmentHoldingDto> DeleteTradeAsync(Guid userId, Guid tradeId)
+    {
+        var trade = await db.InvestmentTrades.FirstOrDefaultAsync(t => t.Id == tradeId && t.UserId == userId)
+            ?? throw new NotFoundException("Trade not found.");
+        var holding = await LoadHoldingWithTradesAsync(userId, trade.HoldingId);
+        holding.Trades.RemoveAll(t => t.Id == tradeId);
+        Recalculate(holding);
+        db.InvestmentTrades.Remove(trade);
+        return HoldingOf(await SaveAndSnapshotAsync(userId), holding.Id);
+    }
+
+    public async Task<InvestmentHoldingDto> AddIncomeAsync(Guid userId, InvestmentIncomeRequestDto request)
+    {
+        var holding = await db.InvestmentHoldings.FirstOrDefaultAsync(h => h.Id == request.HoldingId && h.UserId == userId)
+            ?? throw new NotFoundException("Holding not found.");
+        var date = ValidateDate(request.Date);
+        if (request.Amount <= 0)
+            throw new ValidationException("The amount must be greater than zero.");
+        var currency = request.Currency?.Trim().ToUpperInvariant();
+        decimal amountUsd;
+        decimal? amountArs = null, rate = null;
+        if (currency == "USD")
+            amountUsd = request.Amount;
+        else if (currency == "ARS")
+        {
+            if (request.UsdRate is not > 0)
+                throw new ValidationException("An amount in ARS needs the dollar rate of that day.");
+            amountArs = request.Amount;
+            rate = request.UsdRate;
+            amountUsd = request.Amount / request.UsdRate.Value;
+        }
+        else
+            throw new ValidationException("Currency must be USD or ARS.");
+
+        db.InvestmentIncomes.Add(new InvestmentIncome
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            HoldingId = holding.Id,
+            Date = date,
+            Type = request.Type,
+            AmountUsd = amountUsd,
+            AmountArs = amountArs,
+            UsdRate = rate,
+            CreatedAt = DateTime.UtcNow,
+        });
+        return HoldingOf(await SaveAndSnapshotAsync(userId), holding.Id);
+    }
+
+    public async Task<InvestmentHoldingDto> DeleteIncomeAsync(Guid userId, Guid incomeId)
+    {
+        var income = await db.InvestmentIncomes.FirstOrDefaultAsync(i => i.Id == incomeId && i.UserId == userId)
+            ?? throw new NotFoundException("Income not found.");
+        db.InvestmentIncomes.Remove(income);
+        return HoldingOf(await SaveAndSnapshotAsync(userId), income.HoldingId);
+    }
+
+    private async Task<InvestmentHolding> LoadHoldingWithTradesAsync(Guid userId, Guid holdingId) =>
+        await db.InvestmentHoldings.Include(h => h.Trades)
+            .FirstOrDefaultAsync(h => h.Id == holdingId && h.UserId == userId)
+        ?? throw new NotFoundException("Holding not found.");
+
+    private static DateOnly ValidateDate(DateOnly? date)
+    {
+        var today = TodayInArgentina();
+        var d = date ?? today;
+        if (d > today)
+            throw new ValidationException("The date can't be in the future.");
+        if (d.Year < 2000)
+            throw new ValidationException("Invalid date.");
+        return d;
+    }
+
+    private static InvestmentTrade NewTrade(Guid userId, Guid holdingId, TradeInputDto input)
+    {
+        var date = ValidateDate(input.Date);
+        if (input.Quantity <= 0)
+            throw new ValidationException("The quantity must be greater than zero.");
+        if (input.PriceArs < 0 || input.FeeArs < 0)
+            throw new ValidationException("Price and fee can't be negative.");
+        ValidateRate(input.UsdRate);
+        if (!Enum.IsDefined(input.Type))
+            throw new ValidationException("Invalid trade type.");
+        return new InvestmentTrade
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            HoldingId = holdingId,
+            Date = date,
+            Type = input.Type,
+            Quantity = input.Quantity,
+            PriceArs = input.PriceArs,
+            UsdRate = input.UsdRate,
+            PriceUsd = input.PriceArs / input.UsdRate,
+            FeeArs = input.FeeArs,
+            FeeUsd = input.FeeArs / input.UsdRate,
+            CreatedAt = DateTime.UtcNow,
+        };
+    }
+
+    // Replays the trades in order: buys add to the quantity and to the cost (fees included,
+    // so the PPC is a weighted average in USD); sells take units out at the current PPC and
+    // book the difference with what they fetched (net of fees) as realized gain. A sell for
+    // more than what was held at that date is rejected.
+    internal static void Recalculate(InvestmentHolding holding)
+    {
+        decimal quantity = 0, cost = 0, realized = 0, invested = 0;
+        foreach (var t in holding.Trades.OrderBy(t => t.Date).ThenBy(t => t.CreatedAt))
+        {
+            if (t.Type == InvestmentTradeType.Buy)
+            {
+                var spent = t.Quantity * t.PriceUsd + t.FeeUsd;
+                quantity += t.Quantity;
+                cost += spent;
+                invested += spent;
+            }
+            else
+            {
+                if (t.Quantity > quantity)
+                    throw new ValidationException(
+                        $"On {t.Date:dd/MM/yyyy} you'd be selling {t.Quantity} {holding.Ticker} but only held {quantity} at that point.");
+                var basis = cost / quantity * t.Quantity;
+                realized += t.Quantity * t.PriceUsd - t.FeeUsd - basis;
+                cost -= basis;
+                quantity -= t.Quantity;
+            }
+        }
+        holding.Quantity = quantity;
+        holding.AverageCostUsd = quantity > 0 ? cost / quantity : 0;
+        holding.RealizedGainUsd = realized;
+        holding.InvestedUsd = invested;
+    }
+
+    private static string? NormalizeSymbol(string? symbol)
+    {
+        var s = symbol?.Trim().ToUpperInvariant();
+        if (string.IsNullOrEmpty(s))
+            return null;
+        if (s.Length > 20 || !s.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-'))
+            throw new ValidationException("Invalid market symbol.");
+        return s;
     }
 
     public async Task DeleteHoldingAsync(Guid userId, Guid holdingId)
@@ -297,8 +510,8 @@ public class InvestmentService(AppDbContext db) : IInvestmentService
             throw new ValidationException("The ticker must have between 1 and 20 characters.");
         if (request.TargetPercent is < 0 or > 100)
             throw new ValidationException("The target percent must be between 0 and 100.");
-        if (request.Quantity < 0 || request.AverageCostUsd < 0 || request.PriceArs < 0)
-            throw new ValidationException("Quantity, cost and price can't be negative.");
+        if (request.PriceArs < 0)
+            throw new ValidationException("The price can't be negative.");
         if (!await db.InvestmentGroups.AnyAsync(g => g.Id == request.GroupId && g.UserId == userId))
             throw new ValidationException("Invalid group.");
         if (await db.InvestmentHoldings.AnyAsync(h => h.UserId == userId && h.Ticker == ticker && h.Id != holdingId))
@@ -397,7 +610,8 @@ public class InvestmentService(AppDbContext db) : IInvestmentService
     }
 
     // Every derived value (USD price, value, gains, actual share) is computed here, never stored.
-    private static InvestmentPortfolioDto BuildPortfolio(InvestmentPortfolio? portfolio, List<InvestmentGroup> groups)
+    private static InvestmentPortfolioDto BuildPortfolio(
+        InvestmentPortfolio? portfolio, List<InvestmentGroup> groups, Dictionary<Guid, decimal> income)
     {
         var rate = portfolio?.UsdRate ?? 0;
         var target = portfolio?.TargetAmountUsd ?? 0;
@@ -416,11 +630,15 @@ public class InvestmentService(AppDbContext db) : IInvestmentService
                     var priceUsd = PriceUsd(h);
                     var value = h.Quantity * priceUsd;
                     var cost = h.Quantity * h.AverageCostUsd;
+                    var collected = income.GetValueOrDefault(h.Id);
+                    var total = value - cost + h.RealizedGainUsd + collected;
                     return new InvestmentHoldingDto
                     {
                         Id = h.Id,
                         GroupId = h.GroupId,
                         Ticker = h.Ticker,
+                        MarketSymbol = h.MarketSymbol,
+                        AutoPrice = h.AutoPrice,
                         TargetPercent = h.TargetPercent,
                         TargetAmountUsd = target * h.TargetPercent / 100,
                         Quantity = h.Quantity,
@@ -433,12 +651,19 @@ public class InvestmentService(AppDbContext db) : IInvestmentService
                         CostUsd = cost,
                         GainUsd = value - cost,
                         GainPercent = GainPct(value - cost, cost),
+                        RealizedGainUsd = h.RealizedGainUsd,
+                        IncomeUsd = collected,
+                        InvestedUsd = h.InvestedUsd,
+                        TotalReturnUsd = total,
+                        TotalReturnPercent = GainPct(total, h.InvestedUsd),
                     };
                 })
                 .ToList();
             var gValue = holdings.Sum(h => h.ValueUsd);
             var gCost = holdings.Sum(h => h.CostUsd);
             var gTarget = holdings.Sum(h => h.TargetPercent);
+            var gInvested = holdings.Sum(h => h.InvestedUsd);
+            var gTotal = holdings.Sum(h => h.TotalReturnUsd);
             return new InvestmentGroupDto
             {
                 Id = g.Id,
@@ -454,10 +679,17 @@ public class InvestmentService(AppDbContext db) : IInvestmentService
                 CostUsd = gCost,
                 GainUsd = gValue - gCost,
                 GainPercent = GainPct(gValue - gCost, gCost),
+                RealizedGainUsd = holdings.Sum(h => h.RealizedGainUsd),
+                IncomeUsd = holdings.Sum(h => h.IncomeUsd),
+                InvestedUsd = gInvested,
+                TotalReturnUsd = gTotal,
+                TotalReturnPercent = GainPct(gTotal, gInvested),
             };
         }).ToList();
 
         var totalCost = groupDtos.Sum(g => g.CostUsd);
+        var invested = groupDtos.Sum(g => g.InvestedUsd);
+        var totalReturn = groupDtos.Sum(g => g.TotalReturnUsd);
         return new InvestmentPortfolioDto
         {
             TargetAmountUsd = target,
@@ -469,6 +701,11 @@ public class InvestmentService(AppDbContext db) : IInvestmentService
             CostUsd = totalCost,
             GainUsd = totalValue - totalCost,
             GainPercent = GainPct(totalValue - totalCost, totalCost),
+            RealizedGainUsd = groupDtos.Sum(g => g.RealizedGainUsd),
+            IncomeUsd = groupDtos.Sum(g => g.IncomeUsd),
+            InvestedUsd = invested,
+            TotalReturnUsd = totalReturn,
+            TotalReturnPercent = GainPct(totalReturn, invested),
         };
     }
 }

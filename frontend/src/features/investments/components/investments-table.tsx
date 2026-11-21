@@ -8,6 +8,7 @@ import {
   GROUP_COLORS,
   targetIsOff,
 } from "../utils/format";
+import ActivitySheet from "./activity-sheet";
 import DeleteHoldingButton from "./delete-holding-button";
 import GroupSheet from "./group-sheet";
 import HoldingSheet from "./holding-sheet";
@@ -50,7 +51,10 @@ export default function InvestmentsTable({ portfolio, currency, convert }: Inves
             <th className={`${th} text-right`}>% real</th>
             <th className={`${th} text-right`}>% ganado</th>
             <th className={`${th} text-right`}>Ganado</th>
-            <th className="w-20 px-3 py-2" />
+            <th className={`${th} text-right`} title="Ganancia por precio + ventas + cobros">
+              Rend. total
+            </th>
+            <th className="w-28 px-3 py-2" />
           </tr>
         </thead>
         {portfolio.groups.map((group) => (
@@ -84,6 +88,9 @@ export default function InvestmentsTable({ portfolio, currency, convert }: Inves
               {formatPercent(portfolio.gainPercent)}
             </td>
             <td className={`${td} text-right ${gainClass(portfolio.gainUsd)}`}>{money(portfolio.gainUsd)}</td>
+            <td className={`${td} text-right`}>
+              <TotalReturn usd={portfolio.totalReturnUsd} percent={portfolio.totalReturnPercent} money={money} />
+            </td>
             <td />
           </tr>
         </tfoot>
@@ -111,7 +118,7 @@ function GroupRows({
   return (
     <tbody className={color.row}>
       <tr className="border-t">
-        <td colSpan={11} className="px-3 pt-3 pb-1">
+        <td colSpan={12} className="px-3 pt-3 pb-1">
           <div className="flex items-center gap-2">
             <span className={`size-2.5 rounded-full ${color.dot}`} />
             <span className="font-semibold">{group.name}</span>
@@ -121,7 +128,7 @@ function GroupRows({
       </tr>
       {group.holdings.length === 0 && (
         <tr>
-          <td colSpan={11} className="px-3 py-2 text-muted-foreground">
+          <td colSpan={12} className="px-3 py-2 text-muted-foreground">
             Sin inversiones en este grupo.
           </td>
         </tr>
@@ -150,8 +157,12 @@ function GroupRows({
           <td className={`${td} text-right`}>{formatPercent(h.actualPercent)}</td>
           <td className={`${td} text-right ${gainClass(h.gainPercent)}`}>{formatPercent(h.gainPercent)}</td>
           <td className={`${td} text-right ${gainClass(h.gainUsd)}`}>{money(h.gainUsd)}</td>
+          <td className={`${td} text-right`}>
+            <TotalReturn usd={h.totalReturnUsd} percent={h.totalReturnPercent} money={money} />
+          </td>
           <td className="px-3 py-2">
             <div className="flex justify-end gap-1">
+              <ActivitySheet holding={h} usdRate={portfolio.usdRate} />
               <HoldingSheet groups={portfolio.groups} usdRate={portfolio.usdRate} holding={h} />
               <DeleteHoldingButton holding={h} />
             </div>
@@ -172,8 +183,20 @@ function GroupRows({
         <td className={`${td} text-right`}>{formatPercent(group.actualPercent)}</td>
         <td className={`${td} text-right ${gainClass(group.gainPercent)}`}>{formatPercent(group.gainPercent)}</td>
         <td className={`${td} text-right ${gainClass(group.gainUsd)}`}>{money(group.gainUsd)}</td>
+        <td className={`${td} text-right`}>
+          <TotalReturn usd={group.totalReturnUsd} percent={group.totalReturnPercent} money={money} />
+        </td>
         <td />
       </tr>
     </tbody>
+  );
+}
+
+function TotalReturn({ usd, percent, money }: { usd: number; percent: number; money: (usd: number) => string }) {
+  return (
+    <div className={`flex flex-col items-end ${gainClass(usd)}`}>
+      <span>{money(usd)}</span>
+      <span className="text-xs">{formatPercent(percent)}</span>
+    </div>
   );
 }
