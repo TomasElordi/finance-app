@@ -49,8 +49,15 @@ public class InvestmentService(AppDbContext db) : IInvestmentService
         var rate = portfolio.UsdRate;
         if (rate <= 0)
             throw new ValidationException("Set the dollar rate first.");
-        var amountUsd = currency == "ARS" ? request.Amount / rate : request.Amount;
+        return PlanContribution(portfolio, request.Amount, currency);
+    }
 
+    // Pure so it can be tested without a database: everything it needs is in the portfolio.
+    // ARS amounts are converted at the portfolio's dollar rate.
+    internal static ContributionPlanDto PlanContribution(InvestmentPortfolioDto portfolio, decimal amount, string currency)
+    {
+        var rate = portfolio.UsdRate;
+        var amountUsd = currency == "ARS" ? amount / rate : amount;
         var eligible = portfolio.Groups
             .SelectMany(g => g.Holdings.Select(h => (Holding: h, Fractional: g.AllowFractional)))
             .Where(x => x.Holding.TargetPercent > 0 && x.Holding.PriceUsd > 0)

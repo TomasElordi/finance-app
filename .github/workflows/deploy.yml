@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "api/**"
+      - "tests/**"
       - ".github/workflows/deploy.yml"
 
 jobs:
@@ -19,6 +20,11 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
+
+      # The investment calculations (PPC, realized gains, contribution plan) are covered by
+      # unit tests; a failing test stops the deploy.
+      - name: Test
+        run: dotnet test ../tests/api.Tests
 
       - uses: aws-actions/setup-sam@v2
 
