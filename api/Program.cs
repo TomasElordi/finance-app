@@ -22,6 +22,7 @@ builder.Services.AddScoped<IBudgetService, BudgetService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<ICardService, CardService>();
 builder.Services.AddScoped<ISharedGroupService, SharedGroupService>();
+builder.Services.AddScoped<IInvestmentService, InvestmentService>();
 builder.Services.AddScoped<IOAuthService, OAuthService>();
 builder.Services.AddScoped<ITokenRevocationService, TokenRevocationService>();
 builder.Services.AddControllers();
