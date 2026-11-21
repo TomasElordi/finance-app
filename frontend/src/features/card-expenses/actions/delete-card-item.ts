@@ -1,5 +1,6 @@
 "use server";
 
+import { apiPath } from "@/src/shared/lib/api-path";
 import { revalidateTag, refresh } from "next/cache";
 import { serverFetch } from "@/src/shared/lib/api";
 import { ApiResponse } from "@/src/shared/types/api";
@@ -11,8 +12,10 @@ export async function deleteCardItemAction(
   from?: { year: number; month: number },
 ): Promise<ActionState<Record<string, never>>> {
   try {
-    const query = from ? `?fromYear=${from.year}&fromMonth=${from.month}` : "";
-    const response = await serverFetch<ApiResponse<null> | null>(`/card/items/${id}${query}`, {
+    const path = from
+      ? apiPath`/card/items/${id}?fromYear=${from.year}&fromMonth=${from.month}`
+      : apiPath`/card/items/${id}`;
+    const response = await serverFetch<ApiResponse<null> | null>(path, {
       method: "DELETE",
       auth: true,
     });

@@ -15,6 +15,7 @@ Globals:
         Jwt__Key: !Ref JwtKey
         Jwt__Issuer: !Ref JwtIssuer
         Jwt__Audience: !Ref JwtAudience
+        OAuth__Issuer: !Ref OAuthIssuer
         ASPNETCORE_ENVIRONMENT: Production
         DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: "1"
   # Cap on the whole API (all clients together, not per IP): stops a flood from running
@@ -39,6 +40,10 @@ Parameters:
     Type: String
   JwtAudience:
     Type: String
+  OAuthIssuer:
+    Type: String
+    Default: ""
+    Description: "Public origin of the API (https://<id>.execute-api.<region>.amazonaws.com). Empty: derived from each request."
 
 Resources:
   FinanceApi:

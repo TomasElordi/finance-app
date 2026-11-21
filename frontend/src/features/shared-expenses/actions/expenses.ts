@@ -1,5 +1,6 @@
 "use server";
 
+import { apiPath } from "@/src/shared/lib/api-path";
 import { ActionResult, SharedExpense, SharedExpenseInput } from "../types/shared";
 import { runSharedRequest } from "./run";
 
@@ -10,10 +11,10 @@ export async function saveExpenseAction(
   expenseId?: string,
 ): Promise<ActionResult<SharedExpense>> {
   return expenseId
-    ? runSharedRequest<SharedExpense>(`/${groupId}/expenses/${expenseId}`, "PUT", input)
-    : runSharedRequest<SharedExpense>(`/${groupId}/expenses`, "POST", input);
+    ? runSharedRequest<SharedExpense>(apiPath`/${groupId}/expenses/${expenseId}`, "PUT", input)
+    : runSharedRequest<SharedExpense>(apiPath`/${groupId}/expenses`, "POST", input);
 }
 
 export async function deleteExpenseAction(groupId: string, expenseId: string): Promise<ActionResult> {
-  return runSharedRequest(`/${groupId}/expenses/${expenseId}`, "DELETE");
+  return runSharedRequest(apiPath`/${groupId}/expenses/${expenseId}`, "DELETE");
 }

@@ -1,5 +1,6 @@
 "use server";
 
+import { apiPath } from "@/src/shared/lib/api-path";
 import { serverFetch } from "@/src/shared/lib/api";
 import { ApiResponse } from "@/src/shared/types/api";
 import { refresh } from "next/cache";
@@ -58,7 +59,7 @@ export async function updateEntryAction(
       date: toEntryDate(parsed.data.date),
     };
 
-    const response = await serverFetch<ApiResponse<Entry>>(`/entry/${id}`, {
+    const response = await serverFetch<ApiResponse<Entry>>(apiPath`/entry/${id}`, {
       method: "PUT",
       auth: true,
       body: JSON.stringify(body),

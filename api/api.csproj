@@ -26,4 +26,9 @@
     <PackageReference Include="Serilog.Sinks.Seq" Version="9.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Root CA of the Supabase Postgres servers, used to verify the database certificate. -->
+    <None Include="Certificates/supabase-root-2021-ca.crt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

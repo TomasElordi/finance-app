@@ -2,7 +2,7 @@
 
 import { serverFetch } from "@/src/shared/lib/api";
 import { ApiResponse } from "@/src/shared/types/api";
-import { cookies } from "next/headers";
+import { session } from "@/src/shared/lib/session";
 import { redirect, RedirectType } from "next/navigation";
 import { NEXT_PARAM, safeNextPath } from "@/src/shared/lib/redirect";
 import { RegisterActionState } from "../types/register-action-state";
@@ -55,15 +55,9 @@ export async function registerAction(
       return { status: "error", message: response.message, errors: {} };
     }
 
-    // Guardás la cookie (esto corre en el servidor)
-    const cookieStore = await cookies();
-    cookieStore.set("accessToken", response.data.accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 60 * 60 * 24,
-    });
-    //TASK: Save USER!
+    // Same session cookies as login.
+    await session.setAccessToken(response.data.accessToken);
+    await session.setUserName(response.data.user.name);
   } catch (error) {
     console.log("error", error);
     return { status: "error", message: "Error de conexión", errors: {} };

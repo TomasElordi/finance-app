@@ -31,15 +31,29 @@ jobs:
       - name: sam build
         run: sam build
 
+      # The OAuth issuer (advertised to MCP clients) is the API's own URL. Read it from the
+      # existing stack instead of trusting each request's Host header; empty on a first
+      # deploy, when the API code falls back to the request.
+      - name: Resolve OAuth issuer
+        id: issuer
+        run: |
+          API_ID=$(aws cloudformation describe-stack-resource --stack-name finance-app \
+            --logical-resource-id ServerlessHttpApi \
+            --query StackResourceDetail.PhysicalResourceId --output text 2>/dev/null || true)
+          if [[ "$API_ID" =~ ^[a-z0-9]+$ ]]; then
+            echo "url=https://${API_ID}.execute-api.us-east-1.amazonaws.com" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: sam deploy
         env:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           JWT_KEY: ${{ secrets.JWT_KEY }}
+          OAUTH_ISSUER: ${{ steps.issuer.outputs.url }}
         run: |
           sam deploy \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset \
-            --parameter-overrides "SupabaseProjectRef=lvkfyupzdkjxrisgapti JwtIssuer=finance-api JwtAudience=finance-app PostgresPassword=${POSTGRES_PASSWORD} JwtKey=${JWT_KEY}"
+            --parameter-overrides "SupabaseProjectRef=lvkfyupzdkjxrisgapti JwtIssuer=finance-api JwtAudience=finance-app PostgresPassword=${POSTGRES_PASSWORD} JwtKey=${JWT_KEY}${OAUTH_ISSUER:+ OAuthIssuer=${OAUTH_ISSUER}}"
 
       # Old deploy zips pile up in the SAM bucket; keep only the deployed one.
       # A failed cleanup shouldn't mark the deploy as failed.
