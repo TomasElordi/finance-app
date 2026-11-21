@@ -40,7 +40,7 @@ export default function SharedExpensesView({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-semibold">
-            Gastos en común
+            Gastos compartidos
             {groups.length < 2 && <span className="text-muted-foreground"> · {group.name}</span>}
           </h1>
           <GroupSwitcher groups={groups} groupId={group.id} />

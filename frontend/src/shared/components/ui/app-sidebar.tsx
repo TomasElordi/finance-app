@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
+import type { LucideIcon } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -12,6 +14,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "./sidebar";
 import {
   BarChart2,
@@ -19,6 +22,7 @@ import {
   ChevronsUpDown,
   CircleDollarSign,
   CreditCard,
+  House,
   LogOut,
   Plug,
   Receipt,
@@ -38,6 +42,60 @@ import {
 import { logoutAction } from "@/src/features/auth/logout/actions/logout";
 import { ConnectMcpSheet } from "../connect-mcp-sheet";
 
+type NavItem = { href: string; label: string; icon: LucideIcon };
+
+const HOME_ITEM: NavItem = { href: "/home", label: "Inicio", icon: House };
+
+// Grouped by how the modules relate: accounting is the source of truth,
+// analysis reads from it, and tools keep their own records (no entries).
+const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
+  {
+    label: "Contabilidad",
+    items: [
+      { href: "/entries", label: "Asientos", icon: BookOpen },
+      { href: "/accounts", label: "Cuentas", icon: Wallet },
+    ],
+  },
+  {
+    label: "Análisis",
+    items: [
+      { href: "/expenses", label: "Gastos", icon: Receipt },
+      { href: "/budget", label: "Presupuesto", icon: Target },
+      { href: "/reports", label: "Reportes", icon: BarChart2 },
+    ],
+  },
+  {
+    label: "Herramientas",
+    items: [
+      { href: "/card-expenses", label: "Tarjeta de crédito", icon: CreditCard },
+      { href: "/shared-expenses", label: "Gastos compartidos", icon: Users },
+    ],
+  },
+];
+
+function NavLink({
+  item,
+  pathname,
+  onNavigate,
+}: {
+  item: NavItem;
+  pathname: string;
+  onNavigate: () => void;
+}) {
+  const Icon = item.icon;
+  const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton asChild isActive={isActive}>
+        <Link href={item.href} onClick={onNavigate}>
+          <Icon />
+          <span>{item.label}</span>
+        </Link>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
+}
+
 export function AppSidebar({
   userName,
   mcpUrl,
@@ -46,6 +104,11 @@ export function AppSidebar({
   mcpUrl: string;
 }) {
   const [mcpOpen, setMcpOpen] = useState(false);
+  const pathname = usePathname();
+  const { isMobile, setOpenMobile } = useSidebar();
+  const closeMobile = () => {
+    if (isMobile) setOpenMobile(false);
+  };
 
   return (
     <Sidebar>
@@ -71,66 +134,25 @@ export function AppSidebar({
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navegación</SidebarGroupLabel>
           <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <Link href="/accounts">
-                  <Wallet />
-                  <span>Cuentas</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <Link href="/entries">
-                  <BookOpen />
-                  <span>Asientos</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <Link href="/reports">
-                  <BarChart2 />
-                  <span>Reportes</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <Link href="/expenses">
-                  <Receipt />
-                  <span>Gastos</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <Link href="/card-expenses">
-                  <CreditCard />
-                  <span>Tarjeta</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <Link href="/shared-expenses">
-                  <Users />
-                  <span>Gastos en común</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <Link href="/budget">
-                  <Target />
-                  <span>Presupuesto</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            <NavLink item={HOME_ITEM} pathname={pathname} onNavigate={closeMobile} />
           </SidebarMenu>
         </SidebarGroup>
+        {NAV_GROUPS.map((group) => (
+          <SidebarGroup key={group.label}>
+            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+            <SidebarMenu>
+              {group.items.map((item) => (
+                <NavLink
+                  key={item.href}
+                  item={item}
+                  pathname={pathname}
+                  onNavigate={closeMobile}
+                />
+              ))}
+            </SidebarMenu>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
 
       <SidebarFooter>
