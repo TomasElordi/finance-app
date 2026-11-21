@@ -59,14 +59,18 @@ export default function IolQuotesSheet({ portfolio }: { portfolio: InvestmentPor
   }
 
   return (
-    <Sheet open={open} onOpenChange={handleOpenChange}>
+    // Non-modal: a modal sheet blocks pointer events outside it, and password-manager
+    // extensions (iCloud Passwords, 1Password...) draw their autofill menu outside it.
+    // Clicks outside don't close it either, so picking a login from that menu works;
+    // it closes with the X or Esc.
+    <Sheet open={open} onOpenChange={handleOpenChange} modal={false}>
       <SheetTrigger asChild>
         <Button variant="outline" disabled={autoCount === 0}>
           <CloudDownload className="h-4 w-4" />
           Traer cotizaciones
         </Button>
       </SheetTrigger>
-      <SheetContent className="overflow-y-auto sm:max-w-md">
+      <SheetContent className="overflow-y-auto shadow-2xl sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
         <SheetHeader>
           <SheetTitle>Traer cotizaciones de IOL</SheetTitle>
           <SheetDescription>
