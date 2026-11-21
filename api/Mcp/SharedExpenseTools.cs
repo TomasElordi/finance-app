@@ -124,6 +124,13 @@ public class SharedExpenseTools(ISharedGroupService service, IHttpContextAccesso
             return (object)"Expense deleted.";
         });
 
+    [McpServerTool(Name = "create_shared_category")]
+    [Description("Adds a category to a shared group (e.g. \"Supermercado\", \"Servicios\") so expenses can be filed under it. Check the categories in get_shared_group first; names must be unique in the group.")]
+    public Task<object> CreateSharedCategory(
+        [Description("Group id from list_shared_groups")] Guid groupId,
+        [Description("Category name, up to 100 characters")] string name)
+        => Run(async () => (object)await service.CreateCategoryAsync(CurrentUserId, groupId, new SharedNameRequestDto { Name = name }));
+
     [McpServerTool(Name = "create_settlement")]
     [Description("Records a payment between two members to settle debts (e.g. a bank transfer): fromUserId paid `amount` to toUserId. Use the debts from get_shared_group to know who owes whom.")]
     public Task<object> CreateSettlement(
