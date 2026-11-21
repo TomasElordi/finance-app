@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -19,6 +20,7 @@ import {
   CircleDollarSign,
   CreditCard,
   LogOut,
+  Plug,
   Receipt,
   Target,
   User2,
@@ -34,8 +36,17 @@ import {
   DropdownMenuTrigger,
 } from "./dropdown-menu";
 import { logoutAction } from "@/src/features/auth/logout/actions/logout";
+import { ConnectMcpSheet } from "../connect-mcp-sheet";
 
-export function AppSidebar({ userName }: { userName: string }) {
+export function AppSidebar({
+  userName,
+  mcpUrl,
+}: {
+  userName: string;
+  mcpUrl: string;
+}) {
+  const [mcpOpen, setMcpOpen] = useState(false);
+
   return (
     <Sidebar>
       <SidebarHeader>
@@ -140,6 +151,11 @@ export function AppSidebar({ userName }: { userName: string }) {
               <DropdownMenuContent side="top" align="start">
                 <DropdownMenuLabel>{userName}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => setMcpOpen(true)}>
+                  <Plug />
+                  Conectar MCP
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
                   variant="destructive"
                   onSelect={async () => {
@@ -153,6 +169,11 @@ export function AppSidebar({ userName }: { userName: string }) {
             </DropdownMenu>
           </SidebarMenuItem>
         </SidebarMenu>
+        <ConnectMcpSheet
+          mcpUrl={mcpUrl}
+          open={mcpOpen}
+          onOpenChange={setMcpOpen}
+        />
       </SidebarFooter>
     </Sidebar>
   );
