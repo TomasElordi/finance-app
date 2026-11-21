@@ -26,6 +26,7 @@ public class AppDbContext : DbContext
     public DbSet<OAuthAuthorizationCode> OAuthAuthorizationCodes { get; set; }
     public DbSet<OAuthRefreshToken> OAuthRefreshTokens { get; set; }
     public DbSet<LoginFailure> LoginFailures { get; set; }
+    public DbSet<RevokedToken> RevokedTokens { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -130,6 +131,14 @@ public class AppDbContext : DbContext
             e.ToTable("login_failures");
             e.Property(f => f.Email).HasMaxLength(320);
             e.HasIndex(f => new { f.Email, f.CreatedAt });
+        });
+
+        modelBuilder.Entity<RevokedToken>(e =>
+        {
+            e.ToTable("revoked_tokens");
+            e.Property(t => t.Jti).HasMaxLength(64);
+            e.HasIndex(t => t.Jti).IsUnique();
+            e.HasIndex(t => t.ExpiresAt);
         });
     }
 }

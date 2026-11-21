@@ -8,6 +8,7 @@ using api.Mcp;
 using api.Services;
 using Serilog;
 using System.Text.Json.Serialization;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddAWSLambdaHosting(LambdaEventSource.HttpApi);
@@ -22,6 +23,7 @@ builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<ICardService, CardService>();
 builder.Services.AddScoped<ISharedGroupService, SharedGroupService>();
 builder.Services.AddScoped<IOAuthService, OAuthService>();
+builder.Services.AddScoped<ITokenRevocationService, TokenRevocationService>();
 builder.Services.AddControllers();
 
 builder.Services.AddHttpContextAccessor();
@@ -64,6 +66,26 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         // point them to the protected resource metadata served by OAuthController.
         options.Events = new JwtBearerEvents
         {
+            // Access tokens are stateless JWTs: check the ones revoked before expiring
+            // (logout, disconnected MCP clients). Tokens without a jti can't be revoked,
+            // so they aren't accepted.
+            OnTokenValidated = async context =>
+            {
+                var token = AccessTokenInfo.From(context.SecurityToken);
+                var userIdValue = context.Principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (token is null || !Guid.TryParse(userIdValue, out var userId))
+                {
+                    context.Fail("Token without jti or user.");
+                    return;
+                }
+                var revocation = context.HttpContext.RequestServices.GetRequiredService<ITokenRevocationService>();
+                if (await revocation.IsRevokedAsync(userId, token))
+                {
+                    context.Fail("Token revoked.");
+                    return;
+                }
+                context.HttpContext.Items[AccessTokenInfo.HttpContextKey] = token;
+            },
             OnChallenge = context =>
             {
                 if (!context.Request.Path.StartsWithSegments("/mcp"))
