@@ -4,6 +4,8 @@ export interface InvestmentHolding {
   id: string;
   groupId: string;
   ticker: string;
+  marketSymbol: string | null;
+  autoPrice: boolean;
   targetPercent: number;
   targetAmountUsd: number;
   quantity: number;
@@ -16,6 +18,11 @@ export interface InvestmentHolding {
   costUsd: number;
   gainUsd: number;
   gainPercent: number;
+  realizedGainUsd: number;
+  incomeUsd: number;
+  investedUsd: number;
+  totalReturnUsd: number;
+  totalReturnPercent: number;
 }
 
 export interface InvestmentGroup {
@@ -32,6 +39,11 @@ export interface InvestmentGroup {
   costUsd: number;
   gainUsd: number;
   gainPercent: number;
+  realizedGainUsd: number;
+  incomeUsd: number;
+  investedUsd: number;
+  totalReturnUsd: number;
+  totalReturnPercent: number;
 }
 
 export interface InvestmentPortfolio {
@@ -44,6 +56,11 @@ export interface InvestmentPortfolio {
   costUsd: number;
   gainUsd: number;
   gainPercent: number;
+  realizedGainUsd: number;
+  incomeUsd: number;
+  investedUsd: number;
+  totalReturnUsd: number;
+  totalReturnPercent: number;
 }
 
 export interface InvestmentGroupInput {
@@ -52,13 +69,79 @@ export interface InvestmentGroupInput {
   allowFractional: boolean;
 }
 
+export type TradeType = "Buy" | "Sell";
+export type IncomeType = "Coupon" | "Dividend" | "Amortization";
+
+export const TRADE_TYPE_LABELS: Record<TradeType, string> = { Buy: "Compra", Sell: "Venta" };
+export const INCOME_TYPE_LABELS: Record<IncomeType, string> = {
+  Coupon: "Cupón",
+  Dividend: "Dividendo",
+  Amortization: "Amortización",
+};
+
+export interface TradeInput {
+  date: string; // yyyy-MM-dd
+  type: TradeType;
+  quantity: number;
+  priceArs: number;
+  usdRate: number;
+  feeArs: number;
+}
+
 export interface InvestmentHoldingInput {
   groupId: string;
   ticker: string;
+  marketSymbol: string | null;
+  autoPrice: boolean;
   targetPercent: number;
-  quantity: number;
-  averageCostUsd: number;
   priceArs: number;
+  initialTrade?: TradeInput;
+}
+
+export interface IncomeInput {
+  holdingId: string;
+  date: string;
+  type: IncomeType;
+  amount: number;
+  currency: "USD" | "ARS";
+  usdRate: number | null;
+}
+
+export interface InvestmentTrade {
+  id: string;
+  holdingId: string;
+  ticker: string;
+  date: string;
+  type: TradeType;
+  quantity: number;
+  priceArs: number | null;
+  usdRate: number | null;
+  priceUsd: number;
+  feeArs: number;
+  feeUsd: number;
+  isInitial: boolean;
+}
+
+export interface InvestmentIncome {
+  id: string;
+  holdingId: string;
+  ticker: string;
+  date: string;
+  type: IncomeType;
+  amountUsd: number;
+  amountArs: number | null;
+  usdRate: number | null;
+}
+
+export interface InvestmentActivity {
+  trades: InvestmentTrade[];
+  incomes: InvestmentIncome[];
+}
+
+export interface QuotesResult {
+  updated: { ticker: string; symbol: string; priceArs: number }[];
+  notFound: { ticker: string; symbol: string; reason: string }[];
+  usdRate: number | null;
 }
 
 export interface InvestmentPricesInput {
@@ -76,6 +159,11 @@ export const EMPTY_PORTFOLIO: InvestmentPortfolio = {
   costUsd: 0,
   gainUsd: 0,
   gainPercent: 0,
+  realizedGainUsd: 0,
+  incomeUsd: 0,
+  investedUsd: 0,
+  totalReturnUsd: 0,
+  totalReturnPercent: 0,
 };
 
 export interface InvestmentSnapshot {

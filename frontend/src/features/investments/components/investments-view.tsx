@@ -7,6 +7,7 @@ import { DisplayCurrency, formatPercent, targetIsOff } from "../utils/format";
 import ContributionSheet from "./contribution-sheet";
 import GroupSheet from "./group-sheet";
 import HoldingSheet from "./holding-sheet";
+import IolQuotesSheet from "./iol-quotes-sheet";
 import InvestmentsHistoryChart from "./investments-history-chart";
 import InvestmentsSummary from "./investments-summary";
 import InvestmentsTable from "./investments-table";
@@ -48,6 +49,7 @@ export default function InvestmentsView({
             ))}
           </div>
           <PortfolioSheet portfolio={portfolio} />
+          <IolQuotesSheet portfolio={portfolio} />
           <PricesSheet portfolio={portfolio} />
           <ContributionSheet portfolio={portfolio} />
           <GroupSheet />

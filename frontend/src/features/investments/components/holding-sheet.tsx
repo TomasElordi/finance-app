@@ -22,66 +22,56 @@ import {
   SelectValue,
 } from "@/src/shared/components/ui/select";
 import { InvestmentGroup, InvestmentHolding } from "../types/investment";
-import { formatMoney } from "../utils/format";
+import { formatMoney, todayInArgentina } from "../utils/format";
 import { saveHoldingAction } from "../actions/investment-actions";
-
-type CostMode = "ars" | "usd";
 
 interface HoldingSheetProps {
   groups: InvestmentGroup[];
   usdRate: number;
   holding?: InvestmentHolding;
-  defaultGroupId?: string;
 }
 
 interface Draft {
   groupId: string;
   ticker: string;
+  marketSymbol: string;
+  autoPrice: boolean;
   targetPercent: string;
-  quantity: string;
-  costMode: CostMode;
-  costArs: string;
-  costRate: string;
-  costUsd: string;
   priceArs: string;
+  // First buy, only when creating.
+  buyQuantity: string;
+  buyPriceArs: string;
+  buyUsdRate: string;
+  buyFeeArs: string;
+  buyDate: string;
 }
 
-function draftFrom(
-  groups: InvestmentGroup[],
-  usdRate: number,
-  holding?: InvestmentHolding,
-  defaultGroupId?: string,
-): Draft {
+function draftFrom(groups: InvestmentGroup[], usdRate: number, holding?: InvestmentHolding): Draft {
   return {
-    groupId: holding?.groupId ?? defaultGroupId ?? groups[0]?.id ?? "",
+    groupId: holding?.groupId ?? groups[0]?.id ?? "",
     ticker: holding?.ticker ?? "",
+    marketSymbol: holding?.marketSymbol ?? "",
+    autoPrice: holding?.autoPrice ?? true,
     targetPercent: holding ? String(holding.targetPercent) : "",
-    quantity: holding ? String(holding.quantity) : "",
-    // An existing PPC is already in USD; a new one is usually entered in ARS.
-    costMode: holding ? "usd" : "ars",
-    costArs: "",
-    costRate: usdRate ? String(usdRate) : "",
-    costUsd: holding ? String(holding.averageCostUsd) : "",
     priceArs: holding ? String(holding.priceArs) : "",
+    buyQuantity: "",
+    buyPriceArs: "",
+    buyUsdRate: usdRate ? String(usdRate) : "",
+    buyFeeArs: "",
+    buyDate: todayInArgentina(),
   };
 }
 
-function costUsdOf(draft: Draft): number {
-  if (draft.costMode === "usd") return Number(draft.costUsd);
-  const rate = Number(draft.costRate);
-  return rate > 0 ? Number(draft.costArs) / rate : NaN;
-}
-
-export default function HoldingSheet({ groups, usdRate, holding, defaultGroupId }: HoldingSheetProps) {
+export default function HoldingSheet({ groups, usdRate, holding }: HoldingSheetProps) {
   const isEdit = !!holding;
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState<Draft>(() => draftFrom(groups, usdRate, holding, defaultGroupId));
+  const [draft, setDraft] = useState<Draft>(() => draftFrom(groups, usdRate, holding));
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function handleOpenChange(next: boolean) {
     if (next) {
-      setDraft(draftFrom(groups, usdRate, holding, defaultGroupId));
+      setDraft(draftFrom(groups, usdRate, holding));
       setError(null);
     }
     setOpen(next);
@@ -91,20 +81,26 @@ export default function HoldingSheet({ groups, usdRate, holding, defaultGroupId 
     setDraft((d) => ({ ...d, [key]: value }));
   }
 
-  const costUsd = costUsdOf(draft);
+  const buyQuantity = Number(draft.buyQuantity || 0);
+  const buyPriceArs = Number(draft.buyPriceArs || 0);
+  const buyRate = Number(draft.buyUsdRate || 0);
+  const buyFee = Number(draft.buyFeeArs || 0);
+  const hasBuy = !isEdit && buyQuantity > 0;
+  const buyPpcUsd = hasBuy && buyRate > 0 ? (buyQuantity * buyPriceArs + buyFee) / buyQuantity / buyRate : NaN;
 
   function handleSave() {
     const targetPercent = Number(draft.targetPercent || 0);
-    const quantity = Number(draft.quantity || 0);
-    const priceArs = Number(draft.priceArs || 0);
-    const averageCostUsd = draft.costMode === "ars" && !draft.costArs ? 0 : costUsd;
+    const priceArs = Number(draft.priceArs || (hasBuy ? draft.buyPriceArs : 0) || 0);
 
     if (!draft.groupId) return setError("Elegí un grupo.");
     if (!draft.ticker.trim()) return setError("Ingresá el ticker.");
     if (!(targetPercent >= 0 && targetPercent <= 100)) return setError("El % objetivo debe estar entre 0 y 100.");
-    if (!(quantity >= 0)) return setError("La cantidad no puede ser negativa.");
-    if (!(averageCostUsd >= 0)) return setError("Revisá el precio de compra y el dólar de compra.");
     if (!(priceArs >= 0)) return setError("El precio no puede ser negativo.");
+    if (hasBuy) {
+      if (!(buyPriceArs >= 0)) return setError("Revisá el precio de compra.");
+      if (!(buyRate > 0)) return setError("Ingresá el dólar del día de compra.");
+      if (!(buyFee >= 0)) return setError("La comisión no puede ser negativa.");
+    }
 
     setError(null);
     startTransition(async () => {
@@ -112,10 +108,20 @@ export default function HoldingSheet({ groups, usdRate, holding, defaultGroupId 
         {
           groupId: draft.groupId,
           ticker: draft.ticker.trim().toUpperCase(),
+          marketSymbol: draft.marketSymbol.trim().toUpperCase() || null,
+          autoPrice: draft.autoPrice,
           targetPercent,
-          quantity,
-          averageCostUsd,
           priceArs,
+          initialTrade: hasBuy
+            ? {
+                date: draft.buyDate,
+                type: "Buy",
+                quantity: buyQuantity,
+                priceArs: buyPriceArs,
+                usdRate: buyRate,
+                feeArs: buyFee,
+              }
+            : undefined,
         },
         holding?.id,
       );
@@ -142,7 +148,9 @@ export default function HoldingSheet({ groups, usdRate, holding, defaultGroupId 
         <SheetHeader>
           <SheetTitle>{isEdit ? `Editar ${holding.ticker}` : "Nueva inversión"}</SheetTitle>
           <SheetDescription>
-            Los precios se cargan en pesos; el PPC se guarda en dólares al valor del día de compra.
+            {isEdit
+              ? "La cantidad y el PPC salen de las operaciones: registralas desde el historial."
+              : "Los precios se cargan en pesos. La cantidad y el PPC salen de las operaciones."}
           </SheetDescription>
         </SheetHeader>
 
@@ -189,104 +197,114 @@ export default function HoldingSheet({ groups, usdRate, holding, defaultGroupId 
             </Field>
           </div>
 
-          <Field>
-            <FieldLabel htmlFor="holding-quantity">Cantidad</FieldLabel>
-            <Input
-              id="holding-quantity"
-              type="number"
-              step="any"
-              min="0"
-              placeholder="0"
-              value={draft.quantity}
-              onChange={(e) => update("quantity", e.target.value)}
-            />
-          </Field>
-
           <div className="flex flex-col gap-3 rounded-lg border p-3">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-medium">Precio promedio de compra (PPC)</span>
-              <div className="flex rounded-md border p-0.5 text-xs">
-                {(["ars", "usd"] as CostMode[]).map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => update("costMode", m)}
-                    className={`rounded px-2 py-0.5 ${
-                      draft.costMode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-                    }`}
-                  >
-                    {m.toUpperCase()}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {draft.costMode === "ars" ? (
-              <>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field>
-                    <FieldLabel htmlFor="holding-cost-ars">PPC (ARS)</FieldLabel>
-                    <Input
-                      id="holding-cost-ars"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="0.00"
-                      value={draft.costArs}
-                      onChange={(e) => update("costArs", e.target.value)}
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="holding-cost-rate">Dólar de compra</FieldLabel>
-                    <Input
-                      id="holding-cost-rate"
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      placeholder="0.00"
-                      value={draft.costRate}
-                      onChange={(e) => update("costRate", e.target.value)}
-                    />
-                  </Field>
-                </div>
-                <FieldDescription>
-                  {Number.isFinite(costUsd) && draft.costArs
-                    ? `Se guarda como ${formatMoney(costUsd, "USD")}`
-                    : "Si compraste en varias veces, usá el promedio en pesos y el dólar promedio."}
-                </FieldDescription>
-              </>
-            ) : (
+            <span className="text-sm font-medium">Cotización</span>
+            <div className="grid grid-cols-2 gap-3">
               <Field>
-                <FieldLabel htmlFor="holding-cost-usd">PPC (USD)</FieldLabel>
+                <FieldLabel htmlFor="holding-price">Precio hoy (ARS)</FieldLabel>
                 <Input
-                  id="holding-cost-usd"
+                  id="holding-price"
                   type="number"
-                  step="0.0001"
+                  step="0.01"
                   min="0"
-                  placeholder="0.00"
-                  value={draft.costUsd}
-                  onChange={(e) => update("costUsd", e.target.value)}
+                  placeholder={hasBuy ? "El de compra" : "0.00"}
+                  value={draft.priceArs}
+                  onChange={(e) => update("priceArs", e.target.value)}
                 />
               </Field>
-            )}
+              <Field>
+                <FieldLabel htmlFor="holding-symbol">Símbolo en IOL</FieldLabel>
+                <Input
+                  id="holding-symbol"
+                  value={draft.marketSymbol}
+                  maxLength={20}
+                  placeholder={draft.ticker || "Igual al ticker"}
+                  onChange={(e) => update("marketSymbol", e.target.value.toUpperCase())}
+                />
+              </Field>
+            </div>
+            <FieldDescription>
+              Completá el símbolo solo si en el mercado se llama distinto (ej: SP500 → SPY, YPF → YPFD).
+            </FieldDescription>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="size-4 accent-primary"
+                checked={draft.autoPrice}
+                onChange={(e) => update("autoPrice", e.target.checked)}
+              />
+              Actualizar con &quot;Traer cotizaciones&quot;
+            </label>
           </div>
 
-          <Field>
-            <FieldLabel htmlFor="holding-price">Precio hoy (ARS)</FieldLabel>
-            <Input
-              id="holding-price"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="0.00"
-              value={draft.priceArs}
-              onChange={(e) => update("priceArs", e.target.value)}
-            />
-            {usdRate > 0 && Number(draft.priceArs) > 0 && (
-              <FieldDescription>
-                {`≈ ${formatMoney(Number(draft.priceArs) / usdRate, "USD")} al dólar de hoy`}
-              </FieldDescription>
-            )}
-          </Field>
+          {!isEdit && (
+            <div className="flex flex-col gap-3 rounded-lg border p-3">
+              <span className="text-sm font-medium">Compra inicial (opcional)</span>
+              <div className="grid grid-cols-2 gap-3">
+                <Field>
+                  <FieldLabel htmlFor="buy-quantity">Cantidad</FieldLabel>
+                  <Input
+                    id="buy-quantity"
+                    type="number"
+                    step="any"
+                    min="0"
+                    placeholder="0"
+                    value={draft.buyQuantity}
+                    onChange={(e) => update("buyQuantity", e.target.value)}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="buy-date">Fecha</FieldLabel>
+                  <Input
+                    id="buy-date"
+                    type="date"
+                    max={todayInArgentina()}
+                    value={draft.buyDate}
+                    onChange={(e) => update("buyDate", e.target.value)}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="buy-price">Precio (ARS)</FieldLabel>
+                  <Input
+                    id="buy-price"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    value={draft.buyPriceArs}
+                    onChange={(e) => update("buyPriceArs", e.target.value)}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="buy-rate">Dólar de ese día</FieldLabel>
+                  <Input
+                    id="buy-rate"
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    placeholder="0.00"
+                    value={draft.buyUsdRate}
+                    onChange={(e) => update("buyUsdRate", e.target.value)}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="buy-fee">Comisión (ARS)</FieldLabel>
+                  <Input
+                    id="buy-fee"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    value={draft.buyFeeArs}
+                    onChange={(e) => update("buyFeeArs", e.target.value)}
+                  />
+                </Field>
+              </div>
+              {Number.isFinite(buyPpcUsd) && (
+                <FieldDescription>{`PPC resultante: ${formatMoney(buyPpcUsd, "USD")} (comisión incluida)`}</FieldDescription>
+              )}
+            </div>
+          )}
 
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Separator />

@@ -10,7 +10,10 @@ namespace api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/investments")]
-public class InvestmentController(ILogger<InvestmentController> logger, IInvestmentService investmentService) : ControllerBase
+public class InvestmentController(
+    ILogger<InvestmentController> logger,
+    IInvestmentService investmentService,
+    IInvestmentQuoteService quoteService) : ControllerBase
 {
     private Guid UserId => Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
 
@@ -85,6 +88,44 @@ public class InvestmentController(ILogger<InvestmentController> logger, IInvestm
             await investmentService.DeleteHoldingAsync(UserId, id);
             return NoContent();
         });
+
+    // All of the user's trades and income, or one holding's (holdingId).
+    [HttpGet("activity")]
+    [ProducesResponseType(typeof(ApiResponse<InvestmentActivityDto>), StatusCodes.Status200OK)]
+    public Task<IActionResult> GetActivity([FromQuery] Guid? holdingId) =>
+        Handle<InvestmentActivityDto>("GET investment activity", async () =>
+            Ok(ApiResponse<InvestmentActivityDto>.Ok(await investmentService.GetActivityAsync(UserId, holdingId))));
+
+    [HttpPost("trades")]
+    [ProducesResponseType(typeof(ApiResponse<InvestmentHoldingDto>), StatusCodes.Status200OK)]
+    public Task<IActionResult> AddTrade([FromBody] InvestmentTradeRequestDto request) =>
+        Handle<InvestmentHoldingDto>("POST investment trade", async () =>
+            Ok(ApiResponse<InvestmentHoldingDto>.Ok(await investmentService.AddTradeAsync(UserId, request))));
+
+    [HttpDelete("trades/{id}")]
+    [ProducesResponseType(typeof(ApiResponse<InvestmentHoldingDto>), StatusCodes.Status200OK)]
+    public Task<IActionResult> DeleteTrade([FromRoute] Guid id) =>
+        Handle<InvestmentHoldingDto>("DELETE investment trade", async () =>
+            Ok(ApiResponse<InvestmentHoldingDto>.Ok(await investmentService.DeleteTradeAsync(UserId, id))));
+
+    [HttpPost("incomes")]
+    [ProducesResponseType(typeof(ApiResponse<InvestmentHoldingDto>), StatusCodes.Status200OK)]
+    public Task<IActionResult> AddIncome([FromBody] InvestmentIncomeRequestDto request) =>
+        Handle<InvestmentHoldingDto>("POST investment income", async () =>
+            Ok(ApiResponse<InvestmentHoldingDto>.Ok(await investmentService.AddIncomeAsync(UserId, request))));
+
+    [HttpDelete("incomes/{id}")]
+    [ProducesResponseType(typeof(ApiResponse<InvestmentHoldingDto>), StatusCodes.Status200OK)]
+    public Task<IActionResult> DeleteIncome([FromRoute] Guid id) =>
+        Handle<InvestmentHoldingDto>("DELETE investment income", async () =>
+            Ok(ApiResponse<InvestmentHoldingDto>.Ok(await investmentService.DeleteIncomeAsync(UserId, id))));
+
+    // The body carries the user's IOL credentials: used once for a token, never stored or logged.
+    [HttpPost("quotes/iol")]
+    [ProducesResponseType(typeof(ApiResponse<QuotesResultDto>), StatusCodes.Status200OK)]
+    public Task<IActionResult> FetchIolQuotes([FromBody] IolQuotesRequestDto request) =>
+        Handle<QuotesResultDto>("POST investment quotes (IOL)", async () =>
+            Ok(ApiResponse<QuotesResultDto>.Ok(await quoteService.FetchFromIolAsync(UserId, request))));
 
     private async Task<IActionResult> Handle<T>(string operation, Func<Task<IActionResult>> action)
     {

@@ -58,12 +58,12 @@ export default function PricesSheet({ portfolio }: PricesSheetProps) {
       <SheetTrigger asChild>
         <Button variant="outline" disabled={holdings.length === 0}>
           <RefreshCw className="h-4 w-4" />
-          Actualizar precios
+          Cargar precios
         </Button>
       </SheetTrigger>
       <SheetContent className="overflow-y-auto sm:max-w-md">
         <SheetHeader>
-          <SheetTitle>Actualizar precios</SheetTitle>
+          <SheetTitle>Cargar precios a mano</SheetTitle>
           <SheetDescription>Cargá el dólar del día y los precios en pesos.</SheetDescription>
         </SheetHeader>
         <div className="flex flex-col gap-4 p-4">

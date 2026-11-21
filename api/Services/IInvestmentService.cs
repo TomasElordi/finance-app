@@ -15,4 +15,9 @@ public interface IInvestmentService
     Task<InvestmentHoldingDto> CreateHoldingAsync(Guid userId, InvestmentHoldingRequestDto request);
     Task<InvestmentHoldingDto> UpdateHoldingAsync(Guid userId, Guid holdingId, InvestmentHoldingRequestDto request);
     Task DeleteHoldingAsync(Guid userId, Guid holdingId);
+    Task<InvestmentActivityDto> GetActivityAsync(Guid userId, Guid? holdingId);
+    Task<InvestmentHoldingDto> AddTradeAsync(Guid userId, InvestmentTradeRequestDto request);
+    Task<InvestmentHoldingDto> DeleteTradeAsync(Guid userId, Guid tradeId);
+    Task<InvestmentHoldingDto> AddIncomeAsync(Guid userId, InvestmentIncomeRequestDto request);
+    Task<InvestmentHoldingDto> DeleteIncomeAsync(Guid userId, Guid incomeId);
 }

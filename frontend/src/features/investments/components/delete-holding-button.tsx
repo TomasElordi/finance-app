@@ -34,7 +34,9 @@ export default function DeleteHoldingButton({ holding }: { holding: InvestmentHo
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{`¿Eliminar ${holding.ticker}?`}</AlertDialogTitle>
-            <AlertDialogDescription>Esta acción no se puede deshacer.</AlertDialogDescription>
+            <AlertDialogDescription>
+              Se borran también sus operaciones y cobros. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>

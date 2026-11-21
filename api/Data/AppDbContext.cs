@@ -32,6 +32,8 @@ public class AppDbContext : DbContext
     public DbSet<InvestmentHolding> InvestmentHoldings { get; set; }
     public DbSet<InvestmentSnapshot> InvestmentSnapshots { get; set; }
     public DbSet<InvestmentSnapshotGroup> InvestmentSnapshotGroups { get; set; }
+    public DbSet<InvestmentTrade> InvestmentTrades { get; set; }
+    public DbSet<InvestmentIncome> InvestmentIncomes { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -165,9 +167,26 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<InvestmentHolding>(e =>
         {
             e.Property(h => h.Ticker).HasMaxLength(20);
+            e.Property(h => h.MarketSymbol).HasMaxLength(20);
+            e.Property(h => h.AutoPrice).HasDefaultValue(true);
             e.HasIndex(h => new { h.UserId, h.Ticker }).IsUnique();
             e.HasOne(h => h.User).WithMany().HasForeignKey(h => h.UserId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(h => h.Group).WithMany(g => g.Holdings).HasForeignKey(h => h.GroupId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // A holding's trades and income go away with it (the UI warns before deleting).
+        modelBuilder.Entity<InvestmentTrade>(e =>
+        {
+            e.HasIndex(t => new { t.HoldingId, t.Date });
+            e.HasIndex(t => t.UserId);
+            e.HasOne(t => t.Holding).WithMany(h => h.Trades).HasForeignKey(t => t.HoldingId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<InvestmentIncome>(e =>
+        {
+            e.HasIndex(i => new { i.HoldingId, i.Date });
+            e.HasIndex(i => i.UserId);
+            e.HasOne(i => i.Holding).WithMany(h => h.Incomes).HasForeignKey(i => i.HoldingId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<InvestmentSnapshot>(e =>

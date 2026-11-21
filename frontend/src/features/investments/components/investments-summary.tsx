@@ -20,11 +20,16 @@ export default function InvestmentsSummary({ portfolio, currency, convert }: Inv
         A precio promedio de compra
       </Tile>
       <Tile
-        label="Ganado"
-        value={formatMoney(convert(portfolio.gainUsd), currency)}
-        valueClass={gainClass(portfolio.gainUsd)}
+        label="Rendimiento total"
+        value={formatMoney(convert(portfolio.totalReturnUsd), currency)}
+        valueClass={gainClass(portfolio.totalReturnUsd)}
       >
-        <span className={gainClass(portfolio.gainUsd)}>{formatPercent(portfolio.gainPercent)}</span>
+        <span className="flex flex-col gap-0.5">
+          <span className={gainClass(portfolio.totalReturnUsd)}>
+            {`${formatPercent(portfolio.totalReturnPercent)} sobre lo invertido`}
+          </span>
+          <span>{`Precio ${formatMoney(convert(portfolio.gainUsd), currency)} · Ventas ${formatMoney(convert(portfolio.realizedGainUsd), currency)} · Cobros ${formatMoney(convert(portfolio.incomeUsd), currency)}`}</span>
+        </span>
       </Tile>
       <Tile
         label="Dólar hoy"

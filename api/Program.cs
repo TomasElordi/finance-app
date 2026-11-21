@@ -23,6 +23,18 @@ builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<ICardService, CardService>();
 builder.Services.AddScoped<ISharedGroupService, SharedGroupService>();
 builder.Services.AddScoped<IInvestmentService, InvestmentService>();
+builder.Services.AddScoped<IInvestmentQuoteService, InvestmentQuoteService>();
+// Base URLs are overridable so the quote flow can be tested against a local stand-in.
+builder.Services.AddHttpClient(InvestmentQuoteService.IolClient, c =>
+{
+    c.BaseAddress = new Uri((Environment.GetEnvironmentVariable("IOL_API_URL") ?? "https://api.invertironline.com").TrimEnd('/') + "/");
+    c.Timeout = TimeSpan.FromSeconds(10);
+});
+builder.Services.AddHttpClient(InvestmentQuoteService.DollarClient, c =>
+{
+    c.BaseAddress = new Uri((Environment.GetEnvironmentVariable("DOLAR_API_URL") ?? "https://dolarapi.com").TrimEnd('/') + "/");
+    c.Timeout = TimeSpan.FromSeconds(8);
+});
 builder.Services.AddScoped<IOAuthService, OAuthService>();
 builder.Services.AddScoped<ITokenRevocationService, TokenRevocationService>();
 builder.Services.AddControllers();
