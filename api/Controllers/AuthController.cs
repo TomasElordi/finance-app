@@ -15,16 +15,16 @@ public class AuthController(ILogger<AuthController> logger, IAuthService authSer
     [ProducesResponseType(typeof(ApiResponse<AuthResponseDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Register([FromBody] RegisterRequestDto dto)
     {
-        logger.LogInformation("Register for {Email}", dto.Email);
+        logger.LogInformation("Register for {Email}", MaskEmail(dto.Email));
         try
         {
             var result = await authService.RegisterAsync(dto);
-            logger.LogInformation("User {Email} created", dto.Email);
+            logger.LogInformation("User {User} created", result.User.Id);
             return Ok(ApiResponse<AuthResponseDto>.Ok(result));
         }
         catch (DuplicateEmailException ex)
         {
-            logger.LogWarning(ex, "User with {Email} already exists.", dto.Email);
+            logger.LogWarning("Register with an email that already exists: {Email}", MaskEmail(dto.Email));
             return BadRequest(ApiResponse<AuthResponseDto>.Fail(ex.Message));
         }
         catch (Exception ex)
@@ -38,7 +38,7 @@ public class AuthController(ILogger<AuthController> logger, IAuthService authSer
     [ProducesResponseType(typeof(ApiResponse<AuthResponseDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Login([FromBody] LoginRequestDto dto)
     {
-        logger.LogInformation("Login for {Email}", dto.Email);
+        logger.LogInformation("Login for {Email}", MaskEmail(dto.Email));
         try
         {
             var result = await authService.LoginAsync(dto);
@@ -47,12 +47,12 @@ public class AuthController(ILogger<AuthController> logger, IAuthService authSer
         catch (ValidationException ex)
         {
             // Same message whether the email exists or not.
-            logger.LogWarning("Failed login for {Email}", dto.Email);
+            logger.LogWarning("Failed login for {Email}", MaskEmail(dto.Email));
             return BadRequest(ApiResponse<AuthResponseDto>.Fail(ex.Message));
         }
         catch (TooManyAttemptsException ex)
         {
-            logger.LogWarning("Login locked for {Email} after too many failures", dto.Email);
+            logger.LogWarning("Login locked for {Email} after too many failures", MaskEmail(dto.Email));
             return StatusCode(StatusCodes.Status429TooManyRequests, ApiResponse<AuthResponseDto>.Fail(ex.Message));
         }
         catch (Exception ex)
@@ -125,5 +125,13 @@ public class AuthController(ILogger<AuthController> logger, IAuthService authSer
             logger.LogCritical(ex, "Internal Server Error on MCP revoke");
             return StatusCode(500, ApiResponse<RevokeMcpResponseDto>.Fail("Internal Server Error"));
         }
+    }
+
+    // Logs keep enough to tell accounts apart ("t***@example.com") without storing addresses.
+    private static string MaskEmail(string? email)
+    {
+        var value = email?.Trim() ?? "";
+        var at = value.IndexOf('@');
+        return at <= 0 ? "***" : $"{value[0]}***{value[at..]}";
     }
 }

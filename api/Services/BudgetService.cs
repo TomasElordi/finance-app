@@ -25,8 +25,23 @@ public class BudgetService(AppDbContext db) : IBudgetService
             .ToListAsync();
     }
 
+    // One row per expense account and month; more than this in one request isn't a real budget.
+    private const int MaxBudgetItems = 500;
+
     public async Task<List<BudgetResponseDto>> UpsertBudgetsAsync(Guid userId, List<UpsertBudgetRequestDto> items)
     {
+        if (items.Count == 0)
+            throw new ValidationException("At least one budget item is required.");
+        if (items.Count > MaxBudgetItems)
+            throw new ValidationException($"Too many budget items (max {MaxBudgetItems}).");
+        foreach (var item in items)
+        {
+            if (item.Month is < 1 or > 12 || item.Year is < 2000 or > 2100)
+                throw new ValidationException("Invalid period.");
+            if (item.Amount < 0)
+                throw new ValidationException("Budget amount can't be negative.");
+        }
+
         var accountIds = items.Select(i => i.AccountId).Distinct().ToList();
 
         var validAccounts = await db.Accounts

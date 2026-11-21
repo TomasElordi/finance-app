@@ -44,7 +44,15 @@ var dbName = Environment.GetEnvironmentVariable("POSTGRES_DB");
 var dbUser = Environment.GetEnvironmentVariable("POSTGRES_USER");
 var dbPassword = Environment.GetEnvironmentVariable("POSTGRES_PASSWORD");
 
-var connectionString = $"Host={dbHost};Port={dbPort};Database={dbName};Username={dbUser};Password={dbPassword};SSL Mode=Require;Trust Server Certificate=true";
+// The database certificate is verified (chain to Supabase's root CA + hostname), so a
+// man in the middle can't pose as the database. A local database with a self-signed
+// certificate can opt out with POSTGRES_SSL_MODE=Require.
+var sslMode = Environment.GetEnvironmentVariable("POSTGRES_SSL_MODE") ?? "VerifyFull";
+var sslSettings = sslMode == "VerifyFull"
+    ? $"SSL Mode=VerifyFull;Root Certificate={Path.Combine(AppContext.BaseDirectory, "Certificates", "supabase-root-2021-ca.crt")}"
+    : $"SSL Mode={sslMode};Trust Server Certificate=true";
+
+var connectionString = $"Host={dbHost};Port={dbPort};Database={dbName};Username={dbUser};Password={dbPassword};{sslSettings}";
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString).UseSnakeCaseNamingConvention());

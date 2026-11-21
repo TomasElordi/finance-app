@@ -1,5 +1,6 @@
 "use server";
 
+import { apiPath } from "@/src/shared/lib/api-path";
 import { revalidateTag, refresh } from "next/cache";
 import { serverFetch } from "@/src/shared/lib/api";
 import { ApiResponse } from "@/src/shared/types/api";
@@ -15,7 +16,7 @@ export async function saveCardItemAction(
 ): Promise<SaveCardItemActionState> {
   try {
     const response = await serverFetch<ApiResponse<CardItem>>(
-      id ? `/card/items/${id}` : "/card/items",
+      id ? apiPath`/card/items/${id}` : "/card/items",
       { method: id ? "PUT" : "POST", auth: true, body: JSON.stringify(input) },
     );
 

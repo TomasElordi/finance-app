@@ -12,6 +12,17 @@ public class EntryService(AppDbContext db) : IEntryService
 {
     private static readonly HashSet<NatureType> DebitNormalNatures = [NatureType.Asset, NatureType.Expense];
     private const string RetainedEarningsAccountName = "Resultados Anteriores";
+    // Upper bounds for one request, so a single call can't make the API do unbounded work.
+    public const int MaxLinesPerEntry = 50;
+    public const int MaxEntriesPerBulk = 200;
+
+    private static void ValidateLineCount(int count, int? position = null)
+    {
+        if (count <= MaxLinesPerEntry) return;
+        throw new ValidationException(position is null
+            ? $"An entry can't have more than {MaxLinesPerEntry} lines."
+            : $"El asiento en la posición {position} tiene más de {MaxLinesPerEntry} líneas.");
+    }
 
     private async Task ApplyBalanceDeltasAsync(IEnumerable<EntryLine> lines, bool reverse = false)
     {
@@ -65,6 +76,7 @@ public class EntryService(AppDbContext db) : IEntryService
     {
         if (!dto.EntryLines.Any())
             throw new ValidationException("Entry must have at least one line.");
+        ValidateLineCount(dto.EntryLines.Count);
 
         var accountIds = dto.EntryLines.Select(l => l.AccountId).Distinct();
         var validAccounts = await db.Accounts
@@ -123,6 +135,8 @@ public class EntryService(AppDbContext db) : IEntryService
     {
         if (!dtos.Any())
             throw new ValidationException("Debe incluir al menos un asiento.");
+        if (dtos.Count > MaxEntriesPerBulk)
+            throw new ValidationException($"No se pueden cargar más de {MaxEntriesPerBulk} asientos por vez.");
 
         var accountIds = dtos.SelectMany(d => d.EntryLines.Select(l => l.AccountId)).Distinct().ToList();
         var validAccountIds = (await db.Accounts
@@ -139,6 +153,7 @@ public class EntryService(AppDbContext db) : IEntryService
 
             if (!dto.EntryLines.Any())
                 throw new ValidationException($"El asiento en la posición {position} debe tener al menos una línea.");
+            ValidateLineCount(dto.EntryLines.Count, position);
 
             var entry = new Entry
             {
@@ -210,6 +225,7 @@ public class EntryService(AppDbContext db) : IEntryService
 
         if (!dto.EntryLines.Any())
             throw new ValidationException("Entry must have at least one line.");
+        ValidateLineCount(dto.EntryLines.Count);
 
         var accountIds = dto.EntryLines.Select(l => l.AccountId).Distinct();
         var validAccounts = await db.Accounts

@@ -27,7 +27,7 @@ public class EntryController(ILogger<EntryController> logger, IEntryService entr
         }
         catch (Exception ex)
         {
-            logger.LogInformation(ex, "Internal Server Error on GET Entries");
+            logger.LogError(ex, "Internal Server Error on GET Entries");
             return StatusCode(500, ApiResponse<GetEntriesResponseDto>.Fail("Internal Server Error"));
         }
     }
@@ -50,7 +50,7 @@ public class EntryController(ILogger<EntryController> logger, IEntryService entr
         }
         catch (Exception ex)
         {
-            logger.LogInformation(ex, "Internal Server Error on GET Entry {Id}", Id);
+            logger.LogError(ex, "Internal Server Error on GET Entry {Id}", Id);
             return StatusCode(500, ApiResponse<EntryResponseDto>.Fail("Internal Server Error"));
         }
     }
@@ -78,7 +78,7 @@ public class EntryController(ILogger<EntryController> logger, IEntryService entr
         }
         catch (Exception ex)
         {
-            logger.LogInformation(ex, "Internal Server Error on POST Entry. Request: {@Request}", dto);
+            logger.LogError(ex, "Internal Server Error on POST Entry");
             return StatusCode(500, ApiResponse<EntryResponseDto>.Fail("Internal Server Error"));
         }
     }
@@ -106,7 +106,7 @@ public class EntryController(ILogger<EntryController> logger, IEntryService entr
         }
         catch (Exception ex)
         {
-            logger.LogInformation(ex, "Internal Server Error on POST Bulk Entries. Request: {@Request}", dto);
+            logger.LogError(ex, "Internal Server Error on POST Bulk Entries");
             return StatusCode(500, ApiResponse<List<EntryResponseDto>>.Fail("Internal Server Error"));
         }
     }
@@ -134,7 +134,7 @@ public class EntryController(ILogger<EntryController> logger, IEntryService entr
         }
         catch (Exception ex)
         {
-            logger.LogInformation(ex, "Internal Server Error on POST Close Month.");
+            logger.LogError(ex, "Internal Server Error on POST Close Month.");
             return StatusCode(500, ApiResponse<EntryResponseDto>.Fail("Internal Server Error"));
         }
     }
@@ -164,7 +164,7 @@ public class EntryController(ILogger<EntryController> logger, IEntryService entr
         }
         catch (Exception ex)
         {
-            logger.LogInformation(ex, "Internal Server Error on PUT Entry {Id}. Request: {@Request}", Id, dto);
+            logger.LogError(ex, "Internal Server Error on PUT Entry {Id}", Id);
             return StatusCode(500, ApiResponse<EntryResponseDto>.Fail("Internal Server Error"));
         }
     }
@@ -191,7 +191,7 @@ public class EntryController(ILogger<EntryController> logger, IEntryService entr
         }
         catch (Exception ex)
         {
-            logger.LogInformation(ex, "Internal Server Error on DELETE Entry. Request: {@Request}", Id);
+            logger.LogError(ex, "Internal Server Error on DELETE Entry {Id}", Id);
             return StatusCode(500, ApiResponse<EntryResponseDto>.Fail("Internal Server Error"));
         }
     }

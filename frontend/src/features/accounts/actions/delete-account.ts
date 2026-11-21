@@ -1,5 +1,6 @@
 "use server";
 
+import { apiPath } from "@/src/shared/lib/api-path";
 import { serverFetch } from "@/src/shared/lib/api";
 import { ApiResponse } from "@/src/shared/types/api";
 import { revalidateTag, refresh } from "next/cache";
@@ -16,7 +17,7 @@ export async function deleteAccountAction(
   }
 
   try {
-    const response = await serverFetch<ApiResponse<null>>(`/account/${id}`, {
+    const response = await serverFetch<ApiResponse<null>>(apiPath`/account/${id}`, {
       method: "DELETE",
       auth: true,
     });

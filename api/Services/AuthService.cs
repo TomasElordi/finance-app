@@ -5,6 +5,8 @@ using api.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace api.Services;
 
@@ -12,10 +14,16 @@ public class AuthService(AppDbContext db, IJwtService jwtService) : IAuthService
 {
     public async Task<AuthResponseDto> RegisterAsync(RegisterRequestDto dto)
     {
+        var email = NormalizeEmail(dto.Email);
+        // Emails are compared without case, so "Ana@x.com" can't open a second account
+        // next to "ana@x.com". Older rows may still have mixed case, hence lower() here.
+        if (await db.Users.AnyAsync(u => u.Email.ToLower() == email))
+            throw new DuplicateEmailException("Email already exists.");
+
         var hasher = new PasswordHasher<string>();
         var hashed = hasher.HashPassword(null!, dto.Password);
 
-        var user = new User { Id = Guid.NewGuid(), Name = dto.Name, Email = dto.Email, Password = hashed };
+        var user = new User { Id = Guid.NewGuid(), Name = dto.Name.Trim(), Email = email, Password = hashed };
         db.Users.Add(user);
 
         try
@@ -27,11 +35,7 @@ public class AuthService(AppDbContext db, IJwtService jwtService) : IAuthService
             throw new DuplicateEmailException("Email already exists.");
         }
 
-        var tokens = jwtService.GenerateTokens(user.Id, user.Name, user.Email);
-        db.RefreshToken.Add(new RefreshToken { Id = Guid.NewGuid(), UserId = user.Id, Token = tokens.RefreshToken, ExpirationDate = DateTime.UtcNow.AddDays(30) });
-        await db.SaveChangesAsync();
-
-        return new AuthResponseDto { AccessToken = tokens.AccessToken, RefreshToken = tokens.RefreshToken, User = new UserResponseDto { Id = user.Id, Name = user.Name, Email = user.Email } };
+        return await IssueTokensAsync(user);
     }
 
     // Same message for an unknown email and a wrong password, so the login can't be used
@@ -42,37 +46,52 @@ public class AuthService(AppDbContext db, IJwtService jwtService) : IAuthService
     {
         var user = await ValidateCredentialsAsync(dto.Email, dto.Password)
             ?? throw new ValidationException(InvalidCredentialsMessage);
+        return await IssueTokensAsync(user);
+    }
 
+    public async Task<AuthResponseDto> RefreshAsync(string refreshToken)
+    {
+        var tokenHash = HashToken(refreshToken);
+        var stored = await db.RefreshToken
+            .Include(r => r.User)
+            .FirstOrDefaultAsync(r => r.Token == tokenHash);
+
+        if (stored == null || stored.ExpirationDate < DateTime.UtcNow)
+            throw new ValidationException("Invalid or expired refresh token.");
+
+        db.RefreshToken.Remove(stored);
+        return await IssueTokensAsync(stored.User);
+    }
+
+    // Refresh tokens are stored only as a SHA-256 hash (like the OAuth ones), so a leak
+    // of the table doesn't hand out working tokens.
+    private async Task<AuthResponseDto> IssueTokensAsync(User user)
+    {
         var tokens = jwtService.GenerateTokens(user.Id, user.Name, user.Email);
-        db.RefreshToken.Add(new RefreshToken { Id = Guid.NewGuid(), UserId = user.Id, Token = tokens.RefreshToken, ExpirationDate = DateTime.UtcNow.AddDays(30) });
+        db.RefreshToken.Add(new RefreshToken { Id = Guid.NewGuid(), UserId = user.Id, Token = HashToken(tokens.RefreshToken), ExpirationDate = DateTime.UtcNow.AddDays(30) });
         await db.SaveChangesAsync();
 
         return new AuthResponseDto { AccessToken = tokens.AccessToken, RefreshToken = tokens.RefreshToken, User = new UserResponseDto { Id = user.Id, Name = user.Name, Email = user.Email } };
     }
 
-    public async Task<AuthResponseDto> RefreshAsync(string refreshToken)
+    private static string HashToken(string token) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
+
+    private static string NormalizeEmail(string email) => email.Trim().ToLowerInvariant();
+
+    // Case-insensitive lookup. If old data has two accounts that differ only in case,
+    // the exact spelling decides; otherwise neither matches.
+    private async Task<User?> FindByEmailAsync(string email)
     {
-        var stored = await db.RefreshToken
-            .Include(r => r.User)
-            .FirstOrDefaultAsync(r => r.Token == refreshToken);
-
-        if (stored == null || stored.ExpirationDate < DateTime.UtcNow)
-            throw new ValidationException("Invalid or expired refresh token.");
-
-        var user = stored.User;
-        db.RefreshToken.Remove(stored);
-
-        var tokens = jwtService.GenerateTokens(user.Id, user.Name, user.Email);
-        db.RefreshToken.Add(new RefreshToken { Id = Guid.NewGuid(), UserId = user.Id, Token = tokens.RefreshToken, ExpirationDate = DateTime.UtcNow.AddDays(30) });
-        await db.SaveChangesAsync();
-
-        return new AuthResponseDto { AccessToken = tokens.AccessToken, RefreshToken = tokens.RefreshToken, User = new UserResponseDto { Id = user.Id, Name = user.Name, Email = user.Email } };
+        var normalized = NormalizeEmail(email);
+        var matches = await db.Users.Where(u => u.Email.ToLower() == normalized).Take(2).ToListAsync();
+        return matches.Count == 1 ? matches[0] : matches.FirstOrDefault(u => u.Email == email.Trim());
     }
 
     public async Task<User?> ValidateCredentialsAsync(string email, string password)
     {
         await EnsureNotLockedAsync(email);
-        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email.Trim());
+        var user = await FindByEmailAsync(email);
         // Unknown emails still pay for a hash check, so the response time doesn't tell
         // them apart from a wrong password.
         var verified = new PasswordHasher<string>()

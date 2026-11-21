@@ -1,5 +1,6 @@
 "use server";
 
+import { apiPath } from "@/src/shared/lib/api-path";
 import { serverFetch } from "@/src/shared/lib/api";
 import { ApiResponse } from "@/src/shared/types/api";
 import { ActionState } from "@/src/shared/types/action-state";
@@ -12,7 +13,7 @@ export async function replicatePreviousBudgetAction(
 ): Promise<ActionState> {
   try {
     const response = await serverFetch<ApiResponse<Budget[]>>(
-      `/budget/replicate-previous?year=${year}&month=${month}`,
+      apiPath`/budget/replicate-previous?year=${year}&month=${month}`,
       { method: "POST", auth: true },
     );
 

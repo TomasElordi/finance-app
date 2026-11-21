@@ -25,7 +25,7 @@ public class AccountController(ILogger<AccountController> logger, IAccountServic
         }
         catch (Exception ex)
         {
-            logger.LogInformation(ex, "Internal Server Error on GET Accounts");
+            logger.LogError(ex, "Internal Server Error on GET Accounts");
             return StatusCode(500, ApiResponse<GetAccountsResponseDto>.Fail("Internal Server Error"));
         }
     }
@@ -37,13 +37,13 @@ public class AccountController(ILogger<AccountController> logger, IAccountServic
         try
         {
             var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
-            logger.LogInformation("POST Account by User: {User}. Request: {@Request}", userId, dto);
+            logger.LogInformation("POST Account by User: {User}", userId);
             var account = await accountService.CreateAccountAsync(userId, dto);
             return Ok(ApiResponse<AccountResponseDto>.Ok(account));
         }
         catch (Exception ex)
         {
-            logger.LogInformation(ex, "Internal Server Error on POST Account. Request: {@Request}", dto);
+            logger.LogError(ex, "Internal Server Error on POST Account");
             return StatusCode(500, ApiResponse<AccountResponseDto>.Fail("Internal Server Error"));
         }
     }
@@ -75,7 +75,7 @@ public class AccountController(ILogger<AccountController> logger, IAccountServic
         }
         catch (Exception ex)
         {
-            logger.LogInformation(ex, "Internal Server Error on DELETE Account. Request: {@Request}", id);
+            logger.LogError(ex, "Internal Server Error on DELETE Account {Id}", id);
             return StatusCode(500, ApiResponse<AccountResponseDto>.Fail("Internal Server Error"));
         }
     }

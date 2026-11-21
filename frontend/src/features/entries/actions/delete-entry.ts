@@ -1,5 +1,6 @@
 "use server";
 
+import { apiPath } from "@/src/shared/lib/api-path";
 import { serverFetch } from "@/src/shared/lib/api";
 import { ApiResponse } from "@/src/shared/types/api";
 import { refresh } from "next/cache";
@@ -17,7 +18,7 @@ export async function deleteEntryAction(
   }
 
   try {
-    const response = await serverFetch<ApiResponse<null>>(`/entry/${id}`, {
+    const response = await serverFetch<ApiResponse<null>>(apiPath`/entry/${id}`, {
       method: "DELETE",
       auth: true,
     });
