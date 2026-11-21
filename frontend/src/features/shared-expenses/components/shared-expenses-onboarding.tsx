@@ -4,7 +4,7 @@ import { CreateGroupForm, JoinGroupForm } from "./group-forms";
 export default function SharedExpensesOnboarding({ joinCode }: { joinCode?: string }) {
   return (
     <div className="p-6 flex flex-col gap-8">
-      <h1 className="text-2xl font-semibold">Gastos en común</h1>
+      <h1 className="text-2xl font-semibold">Gastos compartidos</h1>
       <div className="flex flex-col items-center gap-4 py-8 text-center">
         <div className="rounded-full bg-muted p-4">
           <Users className="h-8 w-8 text-muted-foreground" />

@@ -27,7 +27,7 @@ export default function CardExpensesView({
   return (
     <div className="p-6 flex flex-col gap-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Tarjeta</h1>
+        <h1 className="text-2xl font-semibold">Tarjeta de crédito</h1>
         <div className="flex items-center gap-3">
           <PeriodSelector year={year} month={month} allowFuture />
           <CardItemSheet accounts={accounts} people={people} year={year} month={month} />

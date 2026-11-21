@@ -10,6 +10,20 @@ import {
 } from "./ui/sidebar";
 import { Skeleton } from "./ui/skeleton";
 
+// Mirrors the item count of each nav group in app-sidebar.tsx.
+const GROUP_SIZES = [2, 3, 2];
+
+function SkeletonNavItem() {
+  return (
+    <SidebarMenuItem>
+      <div className="flex items-center gap-2 px-2 py-1.5">
+        <Skeleton className="size-4 rounded-sm shrink-0" />
+        <Skeleton className="h-3.5 w-20" />
+      </div>
+    </SidebarMenuItem>
+  );
+}
+
 export default function AppSidebarSkeleton() {
   return (
     <Sidebar>
@@ -29,18 +43,22 @@ export default function AppSidebarSkeleton() {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navegación</SidebarGroupLabel>
           <SidebarMenu>
-            {Array.from({ length: 4 }).map((_, i) => (
-              <SidebarMenuItem key={i}>
-                <div className="flex items-center gap-2 px-2 py-1.5">
-                  <Skeleton className="size-4 rounded-sm shrink-0" />
-                  <Skeleton className="h-3.5 w-20" />
-                </div>
-              </SidebarMenuItem>
-            ))}
+            <SkeletonNavItem />
           </SidebarMenu>
         </SidebarGroup>
+        {GROUP_SIZES.map((size, g) => (
+          <SidebarGroup key={g}>
+            <SidebarGroupLabel>
+              <Skeleton className="h-3 w-20" />
+            </SidebarGroupLabel>
+            <SidebarMenu>
+              {Array.from({ length: size }).map((_, i) => (
+                <SkeletonNavItem key={i} />
+              ))}
+            </SidebarMenu>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
 
       <SidebarFooter>
